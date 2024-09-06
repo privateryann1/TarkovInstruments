@@ -9,6 +9,9 @@ namespace PrivateRyan.PlayableGuitar
     {
         public LocalPlayer player;
         public bool SongPlaying = false;
+        private BaseSoundPlayer guitarSoundComponent;
+        private Player.AbstractHandsController handsController;
+        private Player.BaseKnifeController currentKnifeController;
 
         protected void Awake()
         {
@@ -37,40 +40,43 @@ namespace PrivateRyan.PlayableGuitar
                 return;
             }
 
-            // Other stuff
-            // Play music?
+            if (handsController == null)
+                handsController = player.HandsController;
+
+            if (handsController.FirearmsAnimator.Animator.HasParameter(
+                    handsController.FirearmsAnimator.Animator.StringToHash("Strumming")))
+            {
+                currentKnifeController = handsController as Player.BaseKnifeController;
+                guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
+            }
+            else
+            {
+                return;
+            }
+            
             if (WeaponAnimSpeedControllerPatch.Strumming && !SongPlaying)
             {
+                // Player is strumming, but song is not playing yet
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is strumming and no song is playing");
                 SongPlaying = true;
-                
-                Player.AbstractHandsController handsController = player.HandsController;
-                if (handsController is Player.BaseKnifeController currentKnifeController)
+
+                if (guitarSoundComponent != null)
                 {
-                    BaseSoundPlayer knifeSounds =
-                        currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
-                    if (knifeSounds != null)
-                    {
-                        knifeSounds.SoundEventHandler("Song");
-                        PlayableGuitarPlugin.PBLogger.LogInfo("Playing song");
-                        currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
-                    }
+                    PlayableGuitarPlugin.PBLogger.LogInfo("Playing song");
+                    guitarSoundComponent.SoundEventHandler("Song");
+                    currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
                 }
             } else if (!WeaponAnimSpeedControllerPatch.Strumming && SongPlaying)
             {
+                // Player is no longer strumming, and the song is still playing
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is no longer strumming");
                 SongPlaying = false;
-                Player.AbstractHandsController handsController = player.HandsController;
-                if (handsController is Player.BaseKnifeController currentKnifeController)
+                
+                if (guitarSoundComponent != null)
                 {
-                    BaseSoundPlayer knifeSounds =
-                        currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
-                    if (knifeSounds != null)
-                    {
-                        knifeSounds.ReleaseClipsSource();
-                        PlayableGuitarPlugin.PBLogger.LogInfo("Stopping song");
-                        currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
-                    }
+                    PlayableGuitarPlugin.PBLogger.LogInfo("Stopping song");
+                    guitarSoundComponent.ReleaseClipsSource();
+                    currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
                 }
             }
         }

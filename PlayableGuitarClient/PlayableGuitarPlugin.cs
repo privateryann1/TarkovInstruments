@@ -16,8 +16,6 @@ namespace PrivateRyan.PlayableGuitar
             
             Settings.Init(Config);
             
-            //See if plugin works without below patch
-            //new FirearmsAnimatorPatch().Enable();
             new WeaponAnimSpeedControllerPatch().Enable();
             new PlayableGuitarPatch().Enable();
         }

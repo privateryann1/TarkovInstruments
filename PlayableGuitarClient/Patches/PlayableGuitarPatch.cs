@@ -17,7 +17,7 @@ namespace PrivateRyan.PlayableGuitar.Patches
         {
             if (iPlayer == null)
             {
-                Logger.LogError("Could not add component, player was null!");
+                PlayableGuitarPlugin.PBLogger.LogError("Could not add component, player was null!");
                 return;
             }
 
@@ -27,7 +27,7 @@ namespace PrivateRyan.PlayableGuitar.Patches
             }
 
             Singleton<GameWorld>.Instance.MainPlayer.gameObject.AddComponent<PlayableGuitarComponent>();
-            Logger.LogInfo("Added PG Component to player: " + Singleton<GameWorld>.Instance.MainPlayer.Profile.Nickname);
+            PlayableGuitarPlugin.PBLogger.LogInfo("Added PG Component to player: " + Singleton<GameWorld>.Instance.MainPlayer.Profile.Nickname);
         }
     }
 }

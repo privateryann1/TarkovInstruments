@@ -33,7 +33,7 @@ namespace PrivateRyan.PlayableGuitar.Patches
             
             if (Time.time - lastToggleTime < debounceDelay)
             {
-                Logger.LogInfo("WeaponAnimSpeedControllerPatch Debounce in effect, skipping toggle");
+                PlayableGuitarPlugin.PBLogger.LogInfo("WeaponAnimSpeedControllerPatch Debounce in effect, skipping toggle");
                 return false;
             }
             
@@ -52,8 +52,8 @@ namespace PrivateRyan.PlayableGuitar.Patches
                 animator.SetBool("Strumming", true);
             }
             
-            Logger.LogInfo($"Strumming: {animator.GetBool("Strumming")}");
-            Logger.LogInfo($"Song Playing: {animator.GetBool("SongPlaying")}");
+            PlayableGuitarPlugin.PBLogger.LogInfo($"Strumming: {animator.GetBool("Strumming")}");
+            PlayableGuitarPlugin.PBLogger.LogInfo($"Song Playing: {animator.GetBool("SongPlaying")}");
 
             return false;
         }
