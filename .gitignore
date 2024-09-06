@@ -1,0 +1,7 @@
+PlayableGuitarClient/.idea
+PlayableGuitarClient/bin
+PlayableGuitarClient/obj
+PlayableGuitarClient/Folder.DotSettings.user
+
+PlayableGuitarServer/node_modules
+PlayableGuitarServer/package-lock.json

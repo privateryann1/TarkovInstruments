@@ -1,0 +1,13 @@
+{
+    "manifest": [
+        {
+            "key": "WeaponGuitar/guitar.bundle",
+            "dependencyKeys": [
+                "shaders",
+                "cubemaps",
+                "assets/content/weapons/additional_hands/client_assets.bundle",
+                "assets/content/weapons/weapon_root_anim_fix.bundle"
+            ]
+        }
+    ]
+}

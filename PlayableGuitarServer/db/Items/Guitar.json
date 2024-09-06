@@ -1,0 +1,71 @@
+{
+	"66b9de8cg34d905aa32b5f60c": {
+		"itemTplToClone": "65ca457b4aafb5d7fc0dcb5d",
+		"parentId": "5447e1d04bdc2dff2f8b4567",
+		"handbookParentId": "5b5f7a0886f77409407a7f96",
+		"overrideProperties": {
+			"ExaminedByDefault": true,
+			"Width": 3,
+			"Height": 2,
+			"Weight": 0.87,
+			"Prefab": {
+				"path": "WeaponGuitar/guitar.bundle",
+				"rcid": ""
+			}
+		},
+		"locales": {
+			"en": {
+				"name": "Acoustic Guitar",
+				"shortName": "Guitar",
+				"description": "A playable acoustic guitar."
+			}
+		},
+		"clearClonedProps": false,
+		"addtoInventorySlots": [],
+		"addtoModSlots": false,
+		"modSlot": [],
+		"ModdableItemWhitelist": [],
+		"ModdableItemBlacklist": [],
+		"fleaPriceRoubles": 1,
+		"handbookPriceRoubles": 1,
+		"addtoTraders": false,
+		"traderId": "RAGMAN",
+		"traderItems": [
+			{
+				"unlimitedCount": true,
+				"stackObjectsCount": 99
+			}
+		],
+		"barterScheme": [
+			{
+				"count": 1,
+				"_tpl": "ROUBLES"
+			}
+		],
+		"loyallevelitems": 1,
+		"addtoBots": false,
+		"addtoStaticLootContainers": false,
+		"StaticLootContainers": [
+			{
+				"ContainerName": "LOOTCONTAINER_WEAPON_BOX_4X4",
+				"Probability": 250
+			},
+			{
+				"ContainerName": "LOOTCONTAINER_DEAD_SCAV",
+				"Probability": 150
+			}
+		],
+		"masteries": true,
+		"masterySections": [
+			{
+				"Level2": 1600,
+				"Level3": 2000,
+				"Name": "M4",
+				"Templates": [
+					"66b9de8cf34d11aa91b5f20c"
+				]
+			}
+		],
+		"addweaponpreset": false
+	}
+}
