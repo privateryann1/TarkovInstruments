@@ -8,7 +8,7 @@ namespace PrivateRyan.PlayableGuitar
     internal class PlayableGuitarComponent : MonoBehaviour
     {
         public LocalPlayer player;
-        public bool SongPlaying = false;
+        private bool songPlaying = false;
         private BaseSoundPlayer guitarSoundComponent;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
@@ -43,22 +43,25 @@ namespace PrivateRyan.PlayableGuitar
             if (handsController == null)
                 handsController = player.HandsController;
 
-            if (handsController.FirearmsAnimator.Animator.HasParameter(
-                    handsController.FirearmsAnimator.Animator.StringToHash("Strumming")))
+            // Check if the current animator has the 'Strumming' parameter
+            int param = handsController.FirearmsAnimator.Animator.StringToHash("Strumming");
+            if (handsController.FirearmsAnimator.Animator.HasParameter(param))
             {
                 currentKnifeController = handsController as Player.BaseKnifeController;
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
             }
             else
             {
+                songPlaying = false;
                 return;
             }
             
-            if (WeaponAnimSpeedControllerPatch.Strumming && !SongPlaying)
+            // Handle song playing
+            if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying)
             {
                 // Player is strumming, but song is not playing yet
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is strumming and no song is playing");
-                SongPlaying = true;
+                songPlaying = true;
 
                 if (guitarSoundComponent != null)
                 {
@@ -66,11 +69,11 @@ namespace PrivateRyan.PlayableGuitar
                     guitarSoundComponent.SoundEventHandler("Song");
                     currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
                 }
-            } else if (!WeaponAnimSpeedControllerPatch.Strumming && SongPlaying)
+            } else if (!WeaponAnimSpeedControllerPatch.Strumming && songPlaying)
             {
                 // Player is no longer strumming, and the song is still playing
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is no longer strumming");
-                SongPlaying = false;
+                songPlaying = false;
                 
                 if (guitarSoundComponent != null)
                 {
