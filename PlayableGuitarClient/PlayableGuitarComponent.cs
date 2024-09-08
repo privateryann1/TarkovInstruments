@@ -43,15 +43,22 @@ namespace PrivateRyan.PlayableGuitar
             if (handsController == null)
                 handsController = player.HandsController;
 
+            if (handsController.FirearmsAnimator == null || handsController.FirearmsAnimator.Animator == null)
+                return;
+
             // Check if the current animator has the 'Strumming' parameter
             int param = handsController.FirearmsAnimator.Animator.StringToHash("Strumming");
             if (handsController.FirearmsAnimator.Animator.HasParameter(param))
             {
                 currentKnifeController = handsController as Player.BaseKnifeController;
+                if (currentKnifeController == null)
+                    return;
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
             }
             else
             {
+                // Not a guitar, reset values and return
+                WeaponAnimSpeedControllerPatch.Strumming = false;
                 songPlaying = false;
                 return;
             }

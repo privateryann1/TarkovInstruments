@@ -19,6 +19,7 @@ namespace PrivateRyan.PlayableGuitar
             new WeaponAnimSpeedControllerPatch().Enable();
             new PlayableGuitarPatch().Enable();
         }
+        
     }
 }
 
