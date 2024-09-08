@@ -34,7 +34,7 @@ const CustomItemService_1 = require("./CustomItemService");
 // Custom Trader Assort Items
 const CustomAssortSchemeService_1 = require("./CustomAssortSchemeService");
 const CustomWeaponPresets_1 = require("./CustomWeaponPresets");
-class WTTArmoryRemingtonR5 {
+class PlayableGuitar {
     constructor() {
         this.Instance = new WTTInstanceManager_1.WTTInstanceManager();
         this.modName = "PlayableGuitar";
@@ -80,4 +80,4 @@ class WTTArmoryRemingtonR5 {
         });
     }
 }
-module.exports = { mod: new WTTArmoryRemingtonR5() };
+module.exports = { mod: new PlayableGuitar() };

@@ -20,7 +20,7 @@ import { CustomWeaponPresets } from "./CustomWeaponPresets";
 
 
 
-class WTTArmoryRemingtonR5
+class PlayableGuitar
 implements IpreSptLoadMod, IPostDBLoadMod
 {
     private Instance: WTTInstanceManager = new WTTInstanceManager();
@@ -93,4 +93,4 @@ implements IpreSptLoadMod, IPostDBLoadMod
     }
 }
 
-module.exports = { mod: new WTTArmoryRemingtonR5() };
+module.exports = { mod: new PlayableGuitar() };

@@ -28,7 +28,7 @@
 		"ModdableItemBlacklist": [],
 		"fleaPriceRoubles": 1,
 		"handbookPriceRoubles": 1,
-		"addtoTraders": false,
+		"addtoTraders": true,
 		"traderId": "RAGMAN",
 		"traderItems": [
 			{
@@ -38,34 +38,16 @@
 		],
 		"barterScheme": [
 			{
-				"count": 1,
+				"count": 55000,
 				"_tpl": "ROUBLES"
 			}
 		],
-		"loyallevelitems": 1,
+		"loyallevelitems": 2,
 		"addtoBots": false,
 		"addtoStaticLootContainers": false,
-		"StaticLootContainers": [
-			{
-				"ContainerName": "LOOTCONTAINER_WEAPON_BOX_4X4",
-				"Probability": 250
-			},
-			{
-				"ContainerName": "LOOTCONTAINER_DEAD_SCAV",
-				"Probability": 150
-			}
-		],
-		"masteries": true,
-		"masterySections": [
-			{
-				"Level2": 1600,
-				"Level3": 2000,
-				"Name": "M4",
-				"Templates": [
-					"66b9de8cf34d11aa91b5f20c"
-				]
-			}
-		],
+		"StaticLootContainers": [],
+		"masteries": false,
+		"masterySections": [],
 		"addweaponpreset": false
 	}
 }
