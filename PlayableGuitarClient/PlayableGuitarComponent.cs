@@ -1,5 +1,6 @@
 ﻿using Comfort.Common;
 using EFT;
+using PrivateRyan.PlayableGuitar.Helpers;
 using PrivateRyan.PlayableGuitar.Patches;
 using UnityEngine;
 
@@ -12,18 +13,23 @@ namespace PrivateRyan.PlayableGuitar
         private BaseSoundPlayer guitarSoundComponent;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
+        
+        private PlayableGuitarMidi guitarMidi;
 
         protected void Awake()
         {
             player = (LocalPlayer)Singleton<GameWorld>.Instance.MainPlayer;
+            guitarMidi = new PlayableGuitarMidi();
 
             if (player == null)
             {
+                guitarMidi.Dispose();
                 Destroy(this);
             }
 
             if (!player.IsYourPlayer)
             {
+                guitarMidi.Dispose();
                 Destroy(this);
             }
         }
@@ -54,15 +60,52 @@ namespace PrivateRyan.PlayableGuitar
                 if (currentKnifeController == null)
                     return;
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
+                PlayableGuitarMidi.HasGuitar = true;
             }
             else
             {
                 // Not a guitar, reset values and return
                 WeaponAnimSpeedControllerPatch.Strumming = false;
                 songPlaying = false;
+                PlayableGuitarMidi.HasGuitar = false;
                 return;
             }
             
+            // Check if the key to play the MIDI song is pressed
+            if (Input.GetKeyDown(Settings.PlayMidiKey.Value) && !songPlaying)
+            {
+                PlayableGuitarMidi.PlayMidiSong();
+                songPlaying = true;
+                PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to play song");
+            }
+            else if (Input.GetKeyDown(Settings.PlayMidiKey.Value) && songPlaying)
+            {
+                PlayableGuitarMidi.StopMidiSong();
+                songPlaying = false;
+                PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to stop song");
+            }
+            
+            // MIDI Stuff
+            if (!WeaponAnimSpeedControllerPatch.Strumming && PlayableGuitarMidi.NotePlaying)
+            {
+                currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
+                
+                currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
+                currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", true);
+
+                WeaponAnimSpeedControllerPatch.Strumming = true;
+            }
+            else if (WeaponAnimSpeedControllerPatch.Strumming && !PlayableGuitarMidi.NotePlaying)
+            {
+                currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
+                currentKnifeController.OnFireEnd();
+                
+                currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
+                currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", false);
+                
+                WeaponAnimSpeedControllerPatch.Strumming = false;
+            }
+            /*
             // Handle song playing
             if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying)
             {
@@ -89,6 +132,7 @@ namespace PrivateRyan.PlayableGuitar
                     currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
                 }
             }
+            */
         }
 
         
