@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Melanchall.DryWetMidi.Multimedia; // DryWetMIDI for device management
+using ManagedBass.Midi; // ManagedBass for device management and MIDI handling
 
 namespace PrivateRyan.PlayableGuitar.Helpers
 {
@@ -14,9 +14,10 @@ namespace PrivateRyan.PlayableGuitar.Helpers
 
         // Settings
         public static ConfigEntry<bool> AutoConnectMIDI;
-        public static ConfigEntry<string> SelectedMIDIDevice;
+        public static ConfigEntry<int> SelectedMIDIDevice;  // Change to use the device ID instead of name
         public static ConfigEntry<bool> ReconnectMIDI;
         public static ConfigEntry<string> SelectedMidiSong;  // Select MIDI song
+        public static ConfigEntry<string> SelectedSoundFont;  // Select SoundFont file
         public static ConfigEntry<UnityEngine.KeyCode> PlayMidiKey;  // Key to play the selected song
 
         public static List<ConfigEntryBase> ConfigEntries = new List<ConfigEntryBase>();
@@ -31,20 +32,20 @@ namespace PrivateRyan.PlayableGuitar.Helpers
                 "Auto Connect",
                 true,  // Default value
                 new ConfigDescription(
-                    "Auto connect to the MIDI device", 
+                    "Auto connect to the MIDI device",
                     null,
                     new ConfigurationManagerAttributes { Order = 0 }
                 )));
 
-            // MIDI device selection dropdown (using DryWetMIDI)
-            var midiDevices = InputDevice.GetAll()
-                                         .Select(device => device.Name)
-                                         .ToArray();
+            // MIDI device selection dropdown (using ManagedBass)
+            var midiDevices = Enumerable.Range(0, BassMidi.InDeviceCount)
+                                        .Select(deviceIndex => BassMidi.InGetDeviceInfo(deviceIndex).Name)
+                                        .ToArray();
 
             ConfigEntries.Add(SelectedMIDIDevice = Config.Bind(
                 GeneralSectionTitle,
                 "MIDI Device",
-                midiDevices.FirstOrDefault(),  // Default to the first available device
+                0,  // Default to the first available device (ID 0)
                 new ConfigDescription(
                     "Select the MIDI device to use",
                     null,
@@ -67,6 +68,10 @@ namespace PrivateRyan.PlayableGuitar.Helpers
                                      .Select(Path.GetFileName)
                                      .ToArray();
 
+            var soundfonts = Directory.GetFiles($"{Utils.GetPluginDirectory()}/SoundFonts", "*.sf2")
+                .Select(Path.GetFileName)
+                .ToArray();
+
             ConfigEntries.Add(SelectedMidiSong = Config.Bind(
                 GeneralSectionTitle,
                 "MIDI Song",
@@ -77,6 +82,16 @@ namespace PrivateRyan.PlayableGuitar.Helpers
                     new ConfigurationManagerAttributes { Order = 3, CustomDrawer = DrawMidiSongSelection }
                 )));
 
+            ConfigEntries.Add(SelectedSoundFont = Config.Bind(
+                GeneralSectionTitle,
+                "MIDI Sound Font",
+                soundfonts.FirstOrDefault(), // Default to the first available soundfont
+                new ConfigDescription(
+                    "Select the sound font to use",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 4, CustomDrawer = DrawSoundFonts }
+                )));
+
             // Key binding to play the selected song
             ConfigEntries.Add(PlayMidiKey = Config.Bind(
                 GeneralSectionTitle,
@@ -85,7 +100,7 @@ namespace PrivateRyan.PlayableGuitar.Helpers
                 new ConfigDescription(
                     "Assign a key to play the selected MIDI song",
                     null,
-                    new ConfigurationManagerAttributes { Order = 4 }
+                    new ConfigurationManagerAttributes { Order = 5 }
                 )));
 
             RecalcOrder();
@@ -107,20 +122,33 @@ namespace PrivateRyan.PlayableGuitar.Helpers
             songEntry.Value = midiSongs[selectedIndex];
         }
 
-        // Custom drawer for MIDI device selection dropdown
-        private static void DrawMIDIDeviceSelection(ConfigEntryBase entry)
+        private static void DrawSoundFonts(ConfigEntryBase entry)
         {
-            var midiDevices = InputDevice.GetAll()
-                                         .Select(device => device.Name)
-                                         .ToArray();
+            var soundfonts = Directory.GetFiles($"{Utils.GetPluginDirectory()}/SoundFonts", "*.sf2")
+                .Select(Path.GetFileName)
+                .ToArray();
 
-            ConfigEntry<string> deviceEntry = (ConfigEntry<string>)entry;
-            int selectedIndex = System.Array.IndexOf(midiDevices, deviceEntry.Value);
+            ConfigEntry<string> fontEntry = (ConfigEntry<string>)entry;
+            int selectedIndex = System.Array.IndexOf(soundfonts, fontEntry.Value);
             if (selectedIndex == -1)
                 selectedIndex = 0;
 
+            selectedIndex = UnityEngine.GUILayout.SelectionGrid(selectedIndex, soundfonts, 1);
+            fontEntry.Value = soundfonts[selectedIndex];
+        }
+
+        // Custom drawer for MIDI device selection dropdown
+        private static void DrawMIDIDeviceSelection(ConfigEntryBase entry)
+        {
+            var midiDevices = Enumerable.Range(0, BassMidi.InDeviceCount)
+                                        .Select(deviceIndex => BassMidi.InGetDeviceInfo(deviceIndex).Name)
+                                        .ToArray();
+
+            ConfigEntry<int> deviceEntry = (ConfigEntry<int>)entry;
+            int selectedIndex = deviceEntry.Value;
+
             selectedIndex = UnityEngine.GUILayout.SelectionGrid(selectedIndex, midiDevices, 1);
-            deviceEntry.Value = midiDevices[selectedIndex];
+            deviceEntry.Value = selectedIndex;
         }
 
         // Custom drawer for reconnect button
