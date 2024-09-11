@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using System.Timers;
-using Melanchall.DryWetMidi.Common;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Multimedia;
 using PrivateRyan.PlayableGuitar.Helpers;
@@ -11,22 +10,44 @@ namespace PrivateRyan.PlayableGuitar
 {
     internal class PlayableGuitarMidi
     {
-        private static InputDevice midiInputDevice; // DryWetMIDI for MIDI input
-        private static OutputDevice midiOutputDevice; // DryWetMIDI for MIDI output
-        private static Playback midiPlayback; // DryWetMIDI for song playback
+        private static InputDevice midiInputDevice;
+        private static Playback midiPlayback;
         
-        public static bool HasGuitar = false;
-        public static bool NotePlaying = false;
-        private static bool isSongPlaying = false;
-
+        public static TinySoundFont SoundFont;
+        
         private static Timer noteOffTimer;
         private static double noteOffDelay = 2000;
+        public static bool NotePlaying = false;
         
+        public static bool HasGuitar = false;
+        public static PlayableGuitarComponent GuitarComponent;
+        private static bool isSongPlaying = false;
+
         public PlayableGuitarMidi()
         {
+            if (!Settings.UseMIDI.Value)
+                return;
+            
             InitializeMidi();
+            InitializeSoundFont();
         }
-        
+
+        private void InitializeSoundFont()
+        {
+            string soundFontPath = Path.Combine($"{Utils.GetPluginDirectory()}/SoundFonts", Settings.SelectedSoundFont.Value);
+            SoundFont = new TinySoundFont(soundFontPath);
+
+            if (!SoundFont.IsLoaded)
+            {
+                PlayableGuitarPlugin.PBLogger.LogError("Failed to load SoundFont.");
+            }
+            else
+            {
+                PlayableGuitarPlugin.PBLogger.LogInfo("SoundFont loaded successfully.");
+                SoundFont.SetOutput(44100, 2);
+            }
+        }
+
         private static void InitializeMidi()
         {
             if (!Settings.AutoConnectMIDI.Value)
@@ -34,14 +55,13 @@ namespace PrivateRyan.PlayableGuitar
 
             try
             {
-                // Get the first available MIDI input device
                 var selectedDeviceName = Settings.SelectedMIDIDevice.Value;
                 midiInputDevice = InputDevice.GetByName(selectedDeviceName);
-                
+
                 if (midiInputDevice != null)
                 {
-                    midiInputDevice.EventReceived += OnMidiEventReceived;  // Hook into MIDI input event listener
-                    midiInputDevice.StartEventsListening(); // Start listening for MIDI input
+                    midiInputDevice.EventReceived += OnMidiEventReceived;
+                    midiInputDevice.StartEventsListening();
 
                     PlayableGuitarPlugin.PBLogger.LogInfo($"MIDI input device connected: {midiInputDevice.Name}");
                 }
@@ -50,15 +70,9 @@ namespace PrivateRyan.PlayableGuitar
                     PlayableGuitarPlugin.PBLogger.LogWarning("No MIDI input device found.");
                 }
 
-                // Initialize MIDI output device (e.g., Microsoft GS Wavetable Synth)
-                midiOutputDevice = OutputDevice.GetByName("Microsoft GS Wavetable Synth");
-                midiOutputDevice.SendEvent(new ProgramChangeEvent((SevenBitNumber)24));
-                PlayableGuitarPlugin.PBLogger.LogInfo("MIDI output initialized with Acoustic Guitar sound.");
-
-                // Initialize the timer to handle note-off logic
                 noteOffTimer = new Timer(noteOffDelay);
                 noteOffTimer.Elapsed += ResetNotePlaying;
-                noteOffTimer.AutoReset = false; // Only trigger once after delay
+                noteOffTimer.AutoReset = false;
             }
             catch (Exception ex)
             {
@@ -66,35 +80,37 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
 
-        // Handle MIDI input messages
         private static void OnMidiEventReceived(object sender, MidiEventReceivedEventArgs e)
         {
-            if (!HasGuitar)
+            if (!HasGuitar || GuitarComponent == null)
                 return;
-            
-            var midiEvent = e.Event as NoteOnEvent;
-            if (midiEvent != null)
+
+            if (e.Event is NoteOnEvent noteOn)
             {
-                PlayNoteForMIDI(midiEvent.NoteNumber, midiEvent.Velocity);
+                PlayNoteForMIDI(noteOn.NoteNumber, noteOn.Velocity);
+                GuitarComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
+            }
+            else if (e.Event is NoteOffEvent noteOff)
+            {
+                StopNoteForMIDI(noteOff.NoteNumber);
             }
         }
-
-        // Play the corresponding note using system MIDI output
+        
         private static void PlayNoteForMIDI(int noteNumber, int velocity)
         {
-            // Send the note-on message to play the acoustic guitar sound
-            PlayableGuitarPlugin.PBLogger.LogInfo($"Playing MIDI note: {noteNumber}");
-            midiOutputDevice.SendEvent(new NoteOnEvent((SevenBitNumber)noteNumber, (SevenBitNumber)velocity));
+            SoundFont.PlayNote(noteNumber, velocity / 127f);
 
-            // Set NotePlaying to true
             NotePlaying = true;
-
-            // Reset and start the timer for note-off logic
-            noteOffTimer.Stop();  // Stop if it's already running
-            noteOffTimer.Start(); // Start (or restart) the timer
+            noteOffTimer.Stop();
+            noteOffTimer.Start();
         }
         
-        // Use DryWetMIDI to play the selected MIDI song
+        private static void StopNoteForMIDI(int noteNumber)
+        {
+            SoundFont.StopNote(noteNumber);
+            NotePlaying = false;
+        }
+        
         public static async Task PlayMidiSong()
         {
             if (isSongPlaying)
@@ -107,17 +123,30 @@ namespace PrivateRyan.PlayableGuitar
             if (File.Exists(selectedSongPath))
             {
                 PlayableGuitarPlugin.PBLogger.LogInfo($"Playing MIDI song: {selectedSongPath}");
-
-                // Use DryWetMIDI to read and play the MIDI file
                 MidiFile midiFile = MidiFile.Read(selectedSongPath);
-                midiPlayback = midiFile.GetPlayback(midiOutputDevice); // Use DryWetMIDI's OutputDevice for output
-                isSongPlaying = true;
-                NotePlaying = true;
-
-                // Hook up the Finished event to stop the song when it's done
-                midiPlayback.Finished += (s, e) => StopMidiSong();
                 
-                // Start the song playback (asynchronously by wrapping in Task)
+                midiPlayback = midiFile.GetPlayback();
+                isSongPlaying = true;
+                
+                midiPlayback.EventPlayed += (obj, args) =>
+                {
+                    if (args.Event is NoteOnEvent noteOn)
+                    {
+                        PlayNoteForMIDI(noteOn.NoteNumber, noteOn.Velocity);
+                        GuitarComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
+                    }
+                    else if (args.Event is NoteOffEvent noteOff)
+                    {
+                        StopNoteForMIDI(noteOff.NoteNumber);
+                    }
+                };
+                
+                midiPlayback.Finished += (s, e) =>
+                {
+                    isSongPlaying = false;
+                    PlayableGuitarPlugin.PBLogger.LogInfo("MIDI song playback finished.");
+                };
+                
                 await Task.Run(() => midiPlayback.Start());
             }
             else
@@ -126,36 +155,33 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
 
-        // Stop the MIDI song by stopping the DryWetMIDI playback
+        
         public static void StopMidiSong()
         {
             if (!isSongPlaying || midiPlayback == null)
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning("No song is currently playing.");
+                PlayableGuitarPlugin.PBLogger.LogWarning("No MIDI song is currently playing.");
                 return;
             }
 
-            PlayableGuitarPlugin.PBLogger.LogInfo("Stopping the MIDI song.");
             midiPlayback.Stop();
             isSongPlaying = false;
-            NotePlaying = false;
+
+            PlayableGuitarPlugin.PBLogger.LogInfo("MIDI song playback stopped.");
         }
 
-        // This method will be called after the timer elapses
+
         private static void ResetNotePlaying(object sender, ElapsedEventArgs e)
         {
             NotePlaying = false;
             PlayableGuitarPlugin.PBLogger.LogInfo("No note played recently, NotePlaying set to false.");
         }
-        
+
         public static void ReconnectToMIDI(string selectedDeviceName)
         {
-            // Dispose of the current MIDI input device if it's already connected
             DisposeMidiInputDevice();
 
-            // Find the new MIDI input device by name
             var inputDevice = InputDevice.GetByName(selectedDeviceName);
-
             if (inputDevice != null)
             {
                 midiInputDevice = inputDevice;
@@ -170,8 +196,6 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
 
-
-        // Dispose of the current MIDI input device
         private static void DisposeMidiInputDevice()
         {
             if (midiInputDevice != null)
@@ -182,15 +206,13 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
 
-        // Stop listening for MIDI events when you're done
         public void Dispose()
         {
             DisposeMidiInputDevice();
 
-            if (midiOutputDevice != null)
+            if (SoundFont != null)
             {
-                midiOutputDevice.Dispose();
-                PlayableGuitarPlugin.PBLogger.LogInfo("MIDI output device disconnected.");
+                SoundFont.Dispose();
             }
 
             if (noteOffTimer != null)
@@ -198,7 +220,7 @@ namespace PrivateRyan.PlayableGuitar
                 noteOffTimer.Stop();
                 noteOffTimer.Dispose();
             }
-            
+
             if (midiPlayback != null)
             {
                 midiPlayback.Dispose();

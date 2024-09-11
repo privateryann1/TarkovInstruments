@@ -13,8 +13,9 @@ namespace PrivateRyan.PlayableGuitar
         private BaseSoundPlayer guitarSoundComponent;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
-        
         private PlayableGuitarMidi guitarMidi;
+        
+        private float[] buffer;
 
         protected void Awake()
         {
@@ -32,6 +33,8 @@ namespace PrivateRyan.PlayableGuitar
                 guitarMidi.Dispose();
                 Destroy(this);
             }
+            
+            buffer = new float[44100 * 5 * 2];
         }
 
         protected void Update()
@@ -60,25 +63,27 @@ namespace PrivateRyan.PlayableGuitar
                 if (currentKnifeController == null)
                     return;
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
-                PlayableGuitarMidi.HasGuitar = true;
+                if (Settings.UseMIDI.Value)
+                    PlayableGuitarMidi.HasGuitar = true;
             }
             else
             {
                 // Not a guitar, reset values and return
                 WeaponAnimSpeedControllerPatch.Strumming = false;
                 songPlaying = false;
-                PlayableGuitarMidi.HasGuitar = false;
+                if (Settings.UseMIDI.Value)
+                    PlayableGuitarMidi.HasGuitar = false;
                 return;
             }
             
             // Check if the key to play the MIDI song is pressed
-            if (Input.GetKeyDown(Settings.PlayMidiKey.Value) && !songPlaying)
+            if (Settings.UseMIDI.Value && Input.GetKeyDown(Settings.PlayMidiKey.Value) && !songPlaying)
             {
                 PlayableGuitarMidi.PlayMidiSong();
                 songPlaying = true;
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to play song");
             }
-            else if (Input.GetKeyDown(Settings.PlayMidiKey.Value) && songPlaying)
+            else if (Settings.UseMIDI.Value && Input.GetKeyDown(Settings.PlayMidiKey.Value) && songPlaying)
             {
                 PlayableGuitarMidi.StopMidiSong();
                 songPlaying = false;
@@ -86,7 +91,7 @@ namespace PrivateRyan.PlayableGuitar
             }
             
             // MIDI Stuff
-            if (!WeaponAnimSpeedControllerPatch.Strumming && PlayableGuitarMidi.NotePlaying)
+            if (Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && PlayableGuitarMidi.NotePlaying)
             {
                 currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
                 
@@ -95,7 +100,7 @@ namespace PrivateRyan.PlayableGuitar
 
                 WeaponAnimSpeedControllerPatch.Strumming = true;
             }
-            else if (WeaponAnimSpeedControllerPatch.Strumming && !PlayableGuitarMidi.NotePlaying)
+            else if (Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !PlayableGuitarMidi.NotePlaying)
             {
                 currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
                 currentKnifeController.OnFireEnd();
@@ -105,9 +110,9 @@ namespace PrivateRyan.PlayableGuitar
                 
                 WeaponAnimSpeedControllerPatch.Strumming = false;
             }
-            /*
-            // Handle song playing
-            if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying)
+            
+            // Handle normal song playing
+            if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying && !Settings.UseMIDI.Value)
             {
                 // Player is strumming, but song is not playing yet
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is strumming and no song is playing");
@@ -119,7 +124,7 @@ namespace PrivateRyan.PlayableGuitar
                     guitarSoundComponent.SoundEventHandler("Song");
                     currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
                 }
-            } else if (!WeaponAnimSpeedControllerPatch.Strumming && songPlaying)
+            } else if (!WeaponAnimSpeedControllerPatch.Strumming && songPlaying && !Settings.UseMIDI.Value)
             {
                 // Player is no longer strumming, and the song is still playing
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is no longer strumming");
@@ -132,9 +137,59 @@ namespace PrivateRyan.PlayableGuitar
                     currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
                 }
             }
-            */
+            
+        }
+        
+        private void ApplyFadeIn(float[] buffer, int fadeSamples)
+        {
+            for (int i = 0; i < fadeSamples; i++)
+            {
+                float fadeFactor = (float)i / fadeSamples;
+                buffer[i] *= fadeFactor;
+            }
         }
 
+        private void ApplyFadeOut(float[] buffer, int fadeSamples)
+        {
+            int totalSamples = buffer.Length;
+            for (int i = 0; i < fadeSamples; i++)
+            {
+                float fadeFactor = (float)(fadeSamples - i) / fadeSamples;
+                buffer[totalSamples - fadeSamples + i] *= fadeFactor;
+            }
+        }
+
+        
+        public void PlayNoteTriggered(int note, int velocity)
+        {
+            ClearBuffer();
+            
+            PlayableGuitarMidi.SoundFont.RenderAudio(buffer);
+            
+            ApplyFadeIn(buffer, 1000);
+            ApplyFadeOut(buffer, 1000);
+            
+            AudioClip noteClip = CreateAudioClipFromBuffer(buffer, 44100, 2);
+            
+            guitarSoundComponent.PlayClip(noteClip, 30, 1f);
+            
+            PlayableGuitarPlugin.PBLogger.LogInfo("Note playing, rendering audio...");
+        }
+        
+        private void ClearBuffer()
+        {
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                buffer[i] = 0f;
+            }
+        }
+        
+        private AudioClip CreateAudioClipFromBuffer(float[] buffer, int sampleRate, int channels)
+        {
+            AudioClip clip = AudioClip.Create("GuitarNote", buffer.Length / channels, channels, sampleRate, false);
+            clip.SetData(buffer, 0);
+            return clip;
+        }
         
     }
 }

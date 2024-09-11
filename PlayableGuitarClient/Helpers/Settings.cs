@@ -13,11 +13,13 @@ namespace PrivateRyan.PlayableGuitar.Helpers
         public static ConfigFile Config;
 
         // Settings
+        public static ConfigEntry<bool> UseMIDI;
         public static ConfigEntry<bool> AutoConnectMIDI;
         public static ConfigEntry<string> SelectedMIDIDevice;
         public static ConfigEntry<bool> ReconnectMIDI;
         public static ConfigEntry<string> SelectedMidiSong;  // Select MIDI song
         public static ConfigEntry<UnityEngine.KeyCode> PlayMidiKey;  // Key to play the selected song
+        public static ConfigEntry<string> SelectedSoundFont; // Config to select a SoundFont file
 
         public static List<ConfigEntryBase> ConfigEntries = new List<ConfigEntryBase>();
 
@@ -25,6 +27,17 @@ namespace PrivateRyan.PlayableGuitar.Helpers
         {
             Settings.Config = config;
 
+            // Auto connect setting
+            ConfigEntries.Add(UseMIDI = Config.Bind(
+                GeneralSectionTitle,
+                "Enable MIDI",
+                false,  // Default value
+                new ConfigDescription(
+                    "(Must change before loading into raid) Enables MIDI functionality to play directly from a MIDI device or file, with soundfonts. Enabling this will disable the default song playback.", 
+                    null,
+                    new ConfigurationManagerAttributes { Order = 0 }
+                )));
+            
             // Auto connect setting
             ConfigEntries.Add(AutoConnectMIDI = Config.Bind(
                 GeneralSectionTitle,
@@ -87,6 +100,21 @@ namespace PrivateRyan.PlayableGuitar.Helpers
                     null,
                     new ConfigurationManagerAttributes { Order = 4 }
                 )));
+            
+            // SoundFont selection dropdown
+            var soundFonts = Directory.GetFiles($"{Utils.GetPluginDirectory()}/SoundFonts", "*.sf2")
+                .Select(Path.GetFileName)
+                .ToArray();
+            
+            ConfigEntries.Add(SelectedSoundFont = Config.Bind(
+                GeneralSectionTitle,
+                "SoundFont",
+                soundFonts.FirstOrDefault(),  // Default to the first available SoundFont
+                new ConfigDescription(
+                    "Select the SoundFont to use for MIDI playback",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 5, CustomDrawer = DrawSoundFontSelection }
+                )));
 
             RecalcOrder();
         }
@@ -121,6 +149,21 @@ namespace PrivateRyan.PlayableGuitar.Helpers
 
             selectedIndex = UnityEngine.GUILayout.SelectionGrid(selectedIndex, midiDevices, 1);
             deviceEntry.Value = midiDevices[selectedIndex];
+        }
+        
+        private static void DrawSoundFontSelection(ConfigEntryBase entry)
+        {
+            var soundFonts = Directory.GetFiles($"{Utils.GetPluginDirectory()}/SoundFonts", "*.sf2")
+                .Select(Path.GetFileName)
+                .ToArray();
+
+            ConfigEntry<string> soundFontEntry = (ConfigEntry<string>)entry;
+            int selectedIndex = System.Array.IndexOf(soundFonts, soundFontEntry.Value);
+            if (selectedIndex == -1)
+                selectedIndex = 0;
+
+            selectedIndex = UnityEngine.GUILayout.SelectionGrid(selectedIndex, soundFonts, 1);
+            soundFontEntry.Value = soundFonts[selectedIndex];
         }
 
         // Custom drawer for reconnect button

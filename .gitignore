@@ -8,3 +8,6 @@ PlayableGuitarServer/package-lock.json
 PlayableGuitarServer/bundles/WeaponGuitar/guitar.bundle
 
 Ship/
+TinySoundFont/.idea
+TinySoundFont/.vs
+TinySoundFont/x64

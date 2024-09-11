@@ -22,8 +22,3 @@ namespace PrivateRyan.PlayableGuitar
         
     }
 }
-
-// TODO:
-// Need to make a better strum animation tbh
-// Equip/Unequip anims?
-// 
