@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using Comfort.Common;
 using EFT;
+using PrivateRyan.PlayableGuitar.Helpers;
 using PrivateRyan.PlayableGuitar.Patches;
 using PrivateRyan.TarkovMIDI.Interfaces;
 using UnityEngine;
@@ -171,7 +172,7 @@ namespace PrivateRyan.PlayableGuitar
             
             AudioClip noteClip = CreateAudioClipFromBuffer(buffer, 44100, 2);
             
-            guitarSoundComponent.PlayClip(noteClip, 30, 1f);
+            guitarSoundComponent.PlayClip(noteClip, 30, Settings.GuitarVolume.Value);
             
             PlayableGuitarPlugin.PBLogger.LogInfo("Note playing, rendering audio...");
             

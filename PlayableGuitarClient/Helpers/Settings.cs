@@ -10,7 +10,7 @@ namespace PrivateRyan.PlayableGuitar.Helpers
         public static ConfigFile Config;
 
         // Settings
-        public static ConfigEntry<bool> ASetting;
+        public static ConfigEntry<float> GuitarVolume;
 
         public static List<ConfigEntryBase> ConfigEntries = new List<ConfigEntryBase>();
 
@@ -19,13 +19,13 @@ namespace PrivateRyan.PlayableGuitar.Helpers
             Settings.Config = config;
 
             // Auto connect setting
-            ConfigEntries.Add(ASetting = Config.Bind(
+            ConfigEntries.Add(GuitarVolume = Config.Bind(
                 GeneralSectionTitle,
-                "Some Setting",
-                false,  // Default value
+                "Volume",
+                1f,  // Default value
                 new ConfigDescription(
-                    "Description", 
-                    null,
+                    "The volume of the guitar", 
+                    new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = 0 }
                 )));
 
