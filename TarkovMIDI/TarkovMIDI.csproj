@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <RootNamespace>PrivateRyan.PlayableGuitar</RootNamespace>
-    <AssemblyName>PlayableGuitar</AssemblyName>
+    <RootNamespace>PrivateRyan.TarkovMIDI</RootNamespace>
+    <AssemblyName>TarkovMIDI</AssemblyName>
     <Copyright>Private Ryan</Copyright>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <FileVersion>1.0.0</FileVersion>
@@ -53,9 +53,6 @@
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\dependencies\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="TarkovMIDI">
-      <HintPath>..\..\dependencies\TarkovMIDI.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\dependencies\UnityEngine.dll</HintPath>
     </Reference>
@@ -86,6 +83,10 @@
     <Reference Include="System.IO">
       <HintPath>..\..\dependencies\System.Runtime.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Melanchall.DryWetMidi" Version="7.2.0" />
   </ItemGroup>
 
 </Project>

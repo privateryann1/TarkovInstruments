@@ -3,6 +3,11 @@ PlayableGuitarClient/bin
 PlayableGuitarClient/obj
 PlayableGuitarClient/Folder.DotSettings.user
 
+TarkovMIDI/.idea
+TarkovMIDI/bin
+TarkovMIDI/obj
+TarkovMIDI/Folder.DotSettings.user
+
 PlayableGuitarServer/node_modules
 PlayableGuitarServer/package-lock.json
 PlayableGuitarServer/bundles/WeaponGuitar/guitar.bundle

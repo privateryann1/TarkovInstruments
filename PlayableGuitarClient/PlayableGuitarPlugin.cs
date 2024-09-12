@@ -7,6 +7,7 @@ namespace PrivateRyan.PlayableGuitar
 {
     [BepInPlugin("privateryan.playableguitar", "PlayableGuitar", "1.0.0")]
     [BepInDependency("com.SPT.core", "3.9.0")]
+    [BepInDependency("privateryan.tarkovmidi", "1.0.0")]
     public class PlayableGuitarPlugin : BaseUnityPlugin
     {
         internal static ManualLogSource PBLogger;

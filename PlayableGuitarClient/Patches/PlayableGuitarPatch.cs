@@ -26,7 +26,7 @@ namespace PrivateRyan.PlayableGuitar.Patches
                 return;
             }
 
-            PlayableGuitarMidi.GuitarComponent = Singleton<GameWorld>.Instance.MainPlayer.gameObject.AddComponent<PlayableGuitarComponent>();
+            TarkovMIDI.Controllers.MIDIController.InstrumentComponent = Singleton<GameWorld>.Instance.MainPlayer.gameObject.AddComponent<PlayableGuitarComponent>();
             PlayableGuitarPlugin.PBLogger.LogInfo("Added PG Component to player: " + Singleton<GameWorld>.Instance.MainPlayer.Profile.Nickname);
         }
     }

@@ -4,11 +4,12 @@ using System.Threading.Tasks;
 using System.Timers;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Multimedia;
-using PrivateRyan.PlayableGuitar.Helpers;
+using PrivateRyan.TarkovMIDI.Helpers;
+using PrivateRyan.TarkovMIDI.Interfaces;
 
-namespace PrivateRyan.PlayableGuitar
+namespace PrivateRyan.TarkovMIDI.Controllers
 {
-    internal class PlayableGuitarMidi
+    public class MIDIController
     {
         private static InputDevice midiInputDevice;
         private static Playback midiPlayback;
@@ -19,12 +20,13 @@ namespace PrivateRyan.PlayableGuitar
         private static double noteOffDelay = 2000;
         public static bool NotePlaying = false;
         
-        public static bool HasGuitar = false;
-        public static PlayableGuitarComponent GuitarComponent;
+        public static bool HasInstrument = false;
         private static bool isSongPlaying = false;
         private static bool midiDeviceConnected = false;
+        
+        public static IInstrumentComponent InstrumentComponent;
 
-        public PlayableGuitarMidi()
+        public MIDIController()
         {
             if (!Settings.UseMIDI.Value)
                 return;
@@ -41,11 +43,11 @@ namespace PrivateRyan.PlayableGuitar
 
             if (!SoundFont.IsLoaded)
             {
-                PlayableGuitarPlugin.PBLogger.LogError("Failed to load SoundFont.");
+                TarkovMIDIPlugin.PBLogger.LogError("Failed to load SoundFont.");
             }
             else
             {
-                PlayableGuitarPlugin.PBLogger.LogInfo("SoundFont loaded successfully.");
+                TarkovMIDIPlugin.PBLogger.LogInfo("SoundFont loaded successfully.");
                 SoundFont.SetOutput(44100, 2);
             }
         }
@@ -61,7 +63,7 @@ namespace PrivateRyan.PlayableGuitar
                 if (availableDevices.Count == 0)
                 {
                     midiDeviceConnected = false;
-                    PlayableGuitarPlugin.PBLogger.LogWarning("No MIDI devices available. Continuing without a device.");
+                    TarkovMIDIPlugin.PBLogger.LogWarning("No MIDI devices available. Continuing without a device.");
                     
                     noteOffTimer = new Timer(noteOffDelay);
                     noteOffTimer.Elapsed += ResetNotePlaying;
@@ -78,12 +80,12 @@ namespace PrivateRyan.PlayableGuitar
                     midiInputDevice.EventReceived += OnMidiEventReceived;
                     midiInputDevice.StartEventsListening();
                     midiDeviceConnected = true;
-                    PlayableGuitarPlugin.PBLogger.LogInfo($"MIDI input device connected: {midiInputDevice.Name}");
+                    TarkovMIDIPlugin.PBLogger.LogInfo($"MIDI input device connected: {midiInputDevice.Name}");
                 }
                 else
                 {
                     midiDeviceConnected = false;
-                    PlayableGuitarPlugin.PBLogger.LogWarning($"Selected MIDI input device '{selectedDeviceName}' not found. Continuing without a device.");
+                    TarkovMIDIPlugin.PBLogger.LogWarning($"Selected MIDI input device '{selectedDeviceName}' not found. Continuing without a device.");
                 }
                 
                 noteOffTimer = new Timer(noteOffDelay);
@@ -93,19 +95,19 @@ namespace PrivateRyan.PlayableGuitar
             catch (Exception ex)
             {
                 midiDeviceConnected = false;
-                PlayableGuitarPlugin.PBLogger.LogError($"MIDI initialization error: {ex.Message}");
+                TarkovMIDIPlugin.PBLogger.LogError($"MIDI initialization error: {ex.Message}");
             }
         }
 
         private static void OnMidiEventReceived(object sender, MidiEventReceivedEventArgs e)
         {
-            if (!HasGuitar || GuitarComponent == null)
+            if (!HasInstrument)
                 return;
 
             if (e.Event is NoteOnEvent noteOn)
             {
                 PlayNoteForMIDI(noteOn.NoteNumber, noteOn.Velocity);
-                GuitarComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
+                InstrumentComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
             }
             else if (e.Event is NoteOffEvent noteOff)
             {
@@ -132,16 +134,16 @@ namespace PrivateRyan.PlayableGuitar
         {
             if (isSongPlaying)
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning("A song is already playing.");
+                TarkovMIDIPlugin.PBLogger.LogWarning("A song is already playing.");
                 return;
             }
 
-            PlayableGuitarPlugin.PBLogger.LogWarning("Attempting to play song");
+            TarkovMIDIPlugin.PBLogger.LogWarning("Attempting to play song");
 
             string selectedSongPath = Path.Combine($"{Utils.GetPluginDirectory()}/Midi-Songs", Settings.SelectedMidiSong.Value);
             if (File.Exists(selectedSongPath))
             {
-                PlayableGuitarPlugin.PBLogger.LogInfo($"Playing MIDI song: {selectedSongPath}");
+                TarkovMIDIPlugin.PBLogger.LogInfo($"Playing MIDI song: {selectedSongPath}");
                 MidiFile midiFile = MidiFile.Read(selectedSongPath);
         
                 midiPlayback = midiFile.GetPlayback();
@@ -152,7 +154,7 @@ namespace PrivateRyan.PlayableGuitar
                     if (args.Event is NoteOnEvent noteOn)
                     {
                         PlayNoteForMIDI(noteOn.NoteNumber, noteOn.Velocity);
-                        GuitarComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
+                        InstrumentComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
                     }
                     else if (args.Event is NoteOffEvent noteOff)
                     {
@@ -163,16 +165,16 @@ namespace PrivateRyan.PlayableGuitar
                 midiPlayback.Finished += (s, e) =>
                 {
                     isSongPlaying = false;
-                    PlayableGuitarPlugin.PBLogger.LogInfo("MIDI song playback finished.");
+                    TarkovMIDIPlugin.PBLogger.LogInfo("MIDI song playback finished.");
                 };
 
-                PlayableGuitarPlugin.PBLogger.LogWarning("Midi Playback Start");
+                TarkovMIDIPlugin.PBLogger.LogWarning("Midi Playback Start");
         
                 await Task.Run(() => midiPlayback.Start());
             }
             else
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning($"MIDI song not found: {selectedSongPath}");
+                TarkovMIDIPlugin.PBLogger.LogWarning($"MIDI song not found: {selectedSongPath}");
             }
         }
 
@@ -181,20 +183,20 @@ namespace PrivateRyan.PlayableGuitar
         {
             if (!isSongPlaying || midiPlayback == null)
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning("No MIDI song is currently playing.");
+                TarkovMIDIPlugin.PBLogger.LogWarning("No MIDI song is currently playing.");
                 return;
             }
 
             midiPlayback.Stop();
             isSongPlaying = false;
 
-            PlayableGuitarPlugin.PBLogger.LogInfo("MIDI song playback stopped.");
+            TarkovMIDIPlugin.PBLogger.LogInfo("MIDI song playback stopped.");
         }
 
         private static void ResetNotePlaying(object sender, ElapsedEventArgs e)
         {
             NotePlaying = false;
-            PlayableGuitarPlugin.PBLogger.LogInfo("No note played recently, NotePlaying set to false.");
+            TarkovMIDIPlugin.PBLogger.LogInfo("No note played recently, NotePlaying set to false.");
         }
 
         public static void ReconnectToMIDI(string selectedDeviceName)
@@ -206,11 +208,11 @@ namespace PrivateRyan.PlayableGuitar
 
             if (midiDeviceConnected)
             {
-                PlayableGuitarPlugin.PBLogger.LogInfo($"Successfully reconnected to: {midiInputDevice.Name}");
+                TarkovMIDIPlugin.PBLogger.LogInfo($"Successfully reconnected to: {midiInputDevice.Name}");
             }
             else
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning("Reconnection failed, continuing without MIDI device.");
+                TarkovMIDIPlugin.PBLogger.LogWarning("Reconnection failed, continuing without MIDI device.");
             }
         }
 
@@ -223,7 +225,7 @@ namespace PrivateRyan.PlayableGuitar
                 midiInputDevice = null;
                 midiDeviceConnected = false;
 
-                PlayableGuitarPlugin.PBLogger.LogInfo("MIDI input device disconnected.");
+                TarkovMIDIPlugin.PBLogger.LogInfo("MIDI input device disconnected.");
             }
         }
 

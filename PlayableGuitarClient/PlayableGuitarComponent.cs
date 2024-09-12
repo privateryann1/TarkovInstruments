@@ -1,27 +1,27 @@
 ﻿using System.Collections;
 using Comfort.Common;
 using EFT;
-using PrivateRyan.PlayableGuitar.Helpers;
 using PrivateRyan.PlayableGuitar.Patches;
+using PrivateRyan.TarkovMIDI.Interfaces;
 using UnityEngine;
 
 namespace PrivateRyan.PlayableGuitar
 {
-    internal class PlayableGuitarComponent : MonoBehaviour
+    internal class PlayableGuitarComponent : MonoBehaviour, IInstrumentComponent
     {
         public LocalPlayer player;
         private bool songPlaying = false;
         private BaseSoundPlayer guitarSoundComponent;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
-        private PlayableGuitarMidi guitarMidi;
+        private TarkovMIDI.Controllers.MIDIController guitarMidi;
         
         private float[] buffer;
 
         protected void Awake()
         {
             player = (LocalPlayer)Singleton<GameWorld>.Instance.MainPlayer;
-            guitarMidi = new PlayableGuitarMidi();
+            guitarMidi = new TarkovMIDI.Controllers.MIDIController();
 
             if (player == null)
             {
@@ -64,35 +64,35 @@ namespace PrivateRyan.PlayableGuitar
                 if (currentKnifeController == null)
                     return;
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
-                if (Settings.UseMIDI.Value)
-                    PlayableGuitarMidi.HasGuitar = true;
+                if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
+                    TarkovMIDI.Controllers.MIDIController.HasInstrument = true;
             }
             else
             {
                 // Not a guitar, reset values and return
                 WeaponAnimSpeedControllerPatch.Strumming = false;
                 songPlaying = false;
-                if (Settings.UseMIDI.Value)
-                    PlayableGuitarMidi.HasGuitar = false;
+                if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
+                    TarkovMIDI.Controllers.MIDIController.HasInstrument = false;
                 return;
             }
             
             // Check if the key to play the MIDI song is pressed
-            if (Settings.UseMIDI.Value && Input.GetKeyDown(Settings.PlayMidiKey.Value) && !songPlaying)
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && !songPlaying)
             {
-                PlayableGuitarMidi.PlayMidiSong();
+                TarkovMIDI.Controllers.MIDIController.PlayMidiSong();
                 songPlaying = true;
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to play song");
             }
-            else if (Settings.UseMIDI.Value && Input.GetKeyDown(Settings.PlayMidiKey.Value) && songPlaying)
+            else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && songPlaying)
             {
-                PlayableGuitarMidi.StopMidiSong();
+                TarkovMIDI.Controllers.MIDIController.StopMidiSong();
                 songPlaying = false;
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to stop song");
             }
             
             // MIDI Stuff
-            if (Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && PlayableGuitarMidi.NotePlaying)
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && TarkovMIDI.Controllers.MIDIController.NotePlaying)
             {
                 currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
                 
@@ -101,7 +101,7 @@ namespace PrivateRyan.PlayableGuitar
 
                 WeaponAnimSpeedControllerPatch.Strumming = true;
             }
-            else if (Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !PlayableGuitarMidi.NotePlaying)
+            else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !TarkovMIDI.Controllers.MIDIController.NotePlaying)
             {
                 currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
                 currentKnifeController.OnFireEnd();
@@ -113,7 +113,7 @@ namespace PrivateRyan.PlayableGuitar
             }
             
             // Handle normal song playing
-            if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying && !Settings.UseMIDI.Value)
+            if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying && !TarkovMIDI.Helpers.Settings.UseMIDI.Value)
             {
                 // Player is strumming, but song is not playing yet
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is strumming and no song is playing");
@@ -125,7 +125,7 @@ namespace PrivateRyan.PlayableGuitar
                     guitarSoundComponent.SoundEventHandler("Song");
                     currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
                 }
-            } else if (!WeaponAnimSpeedControllerPatch.Strumming && songPlaying && !Settings.UseMIDI.Value)
+            } else if (!WeaponAnimSpeedControllerPatch.Strumming && songPlaying && !TarkovMIDI.Helpers.Settings.UseMIDI.Value)
             {
                 // Player is no longer strumming, and the song is still playing
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is no longer strumming");
@@ -164,7 +164,7 @@ namespace PrivateRyan.PlayableGuitar
         {
             ClearBuffer();
             
-            PlayableGuitarMidi.SoundFont.RenderAudio(buffer);
+            TarkovMIDI.Controllers.MIDIController.SoundFont.RenderAudio(buffer);
             
             ApplyFadeIn(buffer, 1000);
             ApplyFadeOut(buffer, 1000);
@@ -176,6 +176,11 @@ namespace PrivateRyan.PlayableGuitar
             PlayableGuitarPlugin.PBLogger.LogInfo("Note playing, rendering audio...");
             
             StartCoroutine(ReleaseClipAfterPlay(noteClip, 5.0f));
+        }
+
+        public void StopNoteTriggered(int note)
+        {
+            
         }
         
         // Need to remove the audio clip from memory otherwise we hog all the rams :(
