@@ -59,6 +59,12 @@ namespace PrivateRyan.PlayableGuitar
                 return;
             }
 
+            if (TarkovMIDI.Helpers.Settings.ReconnectMIDI.Value)
+            {
+                guitarMidi.ReconnectToMIDI(TarkovMIDI.Helpers.Settings.SelectedMIDIDevice.Value);
+                TarkovMIDI.Helpers.Settings.ReconnectMIDI.Value = false;
+            }
+
             if (handsController == null)
                 handsController = player.HandsController;
 
