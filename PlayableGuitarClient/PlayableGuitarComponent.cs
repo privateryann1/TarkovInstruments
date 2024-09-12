@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using Comfort.Common;
 using EFT;
 using PrivateRyan.PlayableGuitar.Helpers;
@@ -19,6 +20,10 @@ namespace PrivateRyan.PlayableGuitar
         private MIDIController guitarMidi;
         
         private float[] buffer;
+        
+        private Queue<AudioClip> audioClipPool = new Queue<AudioClip>();
+        private const int PoolSize = 20;
+        private const int ClipDurationInSamples = 44100 * 3;
 
         protected void Awake()
         {
@@ -37,9 +42,11 @@ namespace PrivateRyan.PlayableGuitar
                 Destroy(this);
             }
             
-            buffer = new float[44100 * 5 * 2];
+            buffer = new float[44100 * 3 * 2];
+            
+            InitializeAudioClipPool();
         }
-
+        
         protected void Update()
         {
             if (!Singleton<GameWorld>.Instantiated)
@@ -143,6 +150,34 @@ namespace PrivateRyan.PlayableGuitar
             
         }
         
+        private void InitializeAudioClipPool()
+        {
+            for (int i = 0; i < PoolSize; i++)
+            {
+                AudioClip clip = AudioClip.Create("PooledClip", ClipDurationInSamples, 2, 44100, false);
+                audioClipPool.Enqueue(clip);
+            }
+        }
+        
+        private AudioClip GetPooledClip()
+        {
+            if (audioClipPool.Count > 0)
+            {
+                PlayableGuitarPlugin.PBLogger.LogInfo("Using Pooled Clip");
+                return audioClipPool.Dequeue();
+            }
+            else
+            {
+                PlayableGuitarPlugin.PBLogger.LogWarning("Using Extra Clip");
+                return AudioClip.Create("ExtraClip", ClipDurationInSamples, 2, 44100, false);
+            }
+        }
+        
+        private void ReturnClipToPool(AudioClip clip)
+        {
+            audioClipPool.Enqueue(clip);
+        }
+
         private void ApplyFadeIn(float[] buffer, int fadeSamples)
         {
             for (int i = 0; i < fadeSamples; i++)
@@ -171,13 +206,13 @@ namespace PrivateRyan.PlayableGuitar
             ApplyFadeIn(buffer, 1000);
             ApplyFadeOut(buffer, 1000);
             
-            AudioClip noteClip = CreateAudioClipFromBuffer(buffer, 44100, 2);
+            AudioClip noteClip = GetPooledClip();
+            
+            noteClip.SetData(buffer, 0);
             
             guitarSoundComponent.PlayClip(noteClip, 30, Settings.GuitarVolume.Value);
             
-            PlayableGuitarPlugin.PBLogger.LogInfo("Note playing, rendering audio...");
-            
-            StartCoroutine(ReleaseClipAfterPlay(noteClip, 5.0f));
+            StartCoroutine(ReturnClipToPoolAfterPlay(noteClip, 3.0f));
         }
 
         public void StopNoteTriggered(int note)
@@ -185,19 +220,17 @@ namespace PrivateRyan.PlayableGuitar
             
         }
         
-        // Need to remove the audio clip from memory otherwise we hog all the rams :(
-        private IEnumerator ReleaseClipAfterPlay(AudioClip clip, float playTime)
+        private IEnumerator ReturnClipToPoolAfterPlay(AudioClip clip, float playTime)
         {
             yield return new WaitForSeconds(playTime);
-    
+
             if (clip != null)
             {
-                AudioClip.Destroy(clip);
-                clip = null;
-                PlayableGuitarPlugin.PBLogger.LogInfo("AudioClip released from memory");
+                ReturnClipToPool(clip);
+                PlayableGuitarPlugin.PBLogger.LogInfo("AudioClip returned to pool");
             }
         }
-        
+
         private void ClearBuffer()
         {
             for (int i = 0; i < buffer.Length; i++)
@@ -205,13 +238,5 @@ namespace PrivateRyan.PlayableGuitar
                 buffer[i] = 0f;
             }
         }
-        
-        private AudioClip CreateAudioClipFromBuffer(float[] buffer, int sampleRate, int channels)
-        {
-            AudioClip clip = AudioClip.Create("GuitarNote", buffer.Length / channels, channels, sampleRate, false);
-            clip.SetData(buffer, 0);
-            return clip;
-        }
-        
     }
 }
