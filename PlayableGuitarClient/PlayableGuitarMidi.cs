@@ -22,14 +22,16 @@ namespace PrivateRyan.PlayableGuitar
         public static bool HasGuitar = false;
         public static PlayableGuitarComponent GuitarComponent;
         private static bool isSongPlaying = false;
+        private static bool midiDeviceConnected = false;
 
         public PlayableGuitarMidi()
         {
             if (!Settings.UseMIDI.Value)
                 return;
             
-            InitializeMidi();
             InitializeSoundFont();
+            
+            TryInitializeMidiDevice();
         }
 
         private void InitializeSoundFont()
@@ -48,34 +50,49 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
 
-        private static void InitializeMidi()
+        private static void TryInitializeMidiDevice()
         {
             if (!Settings.AutoConnectMIDI.Value)
                 return;
 
             try
             {
+                var availableDevices = InputDevice.GetAll();
+                if (availableDevices.Count == 0)
+                {
+                    midiDeviceConnected = false;
+                    PlayableGuitarPlugin.PBLogger.LogWarning("No MIDI devices available. Continuing without a device.");
+                    
+                    noteOffTimer = new Timer(noteOffDelay);
+                    noteOffTimer.Elapsed += ResetNotePlaying;
+                    noteOffTimer.AutoReset = false;
+                    
+                    return;
+                }
+                
                 var selectedDeviceName = Settings.SelectedMIDIDevice.Value;
+                
                 midiInputDevice = InputDevice.GetByName(selectedDeviceName);
-
                 if (midiInputDevice != null)
                 {
                     midiInputDevice.EventReceived += OnMidiEventReceived;
                     midiInputDevice.StartEventsListening();
-
+                    midiDeviceConnected = true;
                     PlayableGuitarPlugin.PBLogger.LogInfo($"MIDI input device connected: {midiInputDevice.Name}");
                 }
                 else
                 {
-                    PlayableGuitarPlugin.PBLogger.LogWarning("No MIDI input device found.");
+                    midiDeviceConnected = false;
+                    PlayableGuitarPlugin.PBLogger.LogWarning($"Selected MIDI input device '{selectedDeviceName}' not found. Continuing without a device.");
                 }
-
+                
                 noteOffTimer = new Timer(noteOffDelay);
                 noteOffTimer.Elapsed += ResetNotePlaying;
                 noteOffTimer.AutoReset = false;
             }
             catch (Exception ex)
             {
+                midiDeviceConnected = false;
                 PlayableGuitarPlugin.PBLogger.LogError($"MIDI initialization error: {ex.Message}");
             }
         }
@@ -95,7 +112,7 @@ namespace PrivateRyan.PlayableGuitar
                 StopNoteForMIDI(noteOff.NoteNumber);
             }
         }
-        
+
         private static void PlayNoteForMIDI(int noteNumber, int velocity)
         {
             SoundFont.PlayNote(noteNumber, velocity / 127f);
@@ -104,13 +121,13 @@ namespace PrivateRyan.PlayableGuitar
             noteOffTimer.Stop();
             noteOffTimer.Start();
         }
-        
+
         private static void StopNoteForMIDI(int noteNumber)
         {
             SoundFont.StopNote(noteNumber);
             NotePlaying = false;
         }
-        
+
         public static async Task PlayMidiSong()
         {
             if (isSongPlaying)
@@ -119,12 +136,14 @@ namespace PrivateRyan.PlayableGuitar
                 return;
             }
 
+            PlayableGuitarPlugin.PBLogger.LogWarning("Attempting to play song");
+
             string selectedSongPath = Path.Combine($"{Utils.GetPluginDirectory()}/Midi-Songs", Settings.SelectedMidiSong.Value);
             if (File.Exists(selectedSongPath))
             {
                 PlayableGuitarPlugin.PBLogger.LogInfo($"Playing MIDI song: {selectedSongPath}");
                 MidiFile midiFile = MidiFile.Read(selectedSongPath);
-                
+        
                 midiPlayback = midiFile.GetPlayback();
                 isSongPlaying = true;
                 
@@ -140,13 +159,15 @@ namespace PrivateRyan.PlayableGuitar
                         StopNoteForMIDI(noteOff.NoteNumber);
                     }
                 };
-                
+        
                 midiPlayback.Finished += (s, e) =>
                 {
                     isSongPlaying = false;
                     PlayableGuitarPlugin.PBLogger.LogInfo("MIDI song playback finished.");
                 };
-                
+
+                PlayableGuitarPlugin.PBLogger.LogWarning("Midi Playback Start");
+        
                 await Task.Run(() => midiPlayback.Start());
             }
             else
@@ -155,7 +176,7 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
 
-        
+
         public static void StopMidiSong()
         {
             if (!isSongPlaying || midiPlayback == null)
@@ -170,7 +191,6 @@ namespace PrivateRyan.PlayableGuitar
             PlayableGuitarPlugin.PBLogger.LogInfo("MIDI song playback stopped.");
         }
 
-
         private static void ResetNotePlaying(object sender, ElapsedEventArgs e)
         {
             NotePlaying = false;
@@ -181,18 +201,16 @@ namespace PrivateRyan.PlayableGuitar
         {
             DisposeMidiInputDevice();
 
-            var inputDevice = InputDevice.GetByName(selectedDeviceName);
-            if (inputDevice != null)
-            {
-                midiInputDevice = inputDevice;
-                midiInputDevice.EventReceived += OnMidiEventReceived;
-                midiInputDevice.StartEventsListening();
+            midiDeviceConnected = false;
+            TryInitializeMidiDevice();
 
+            if (midiDeviceConnected)
+            {
                 PlayableGuitarPlugin.PBLogger.LogInfo($"Successfully reconnected to: {midiInputDevice.Name}");
             }
             else
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning("Selected MIDI device not found.");
+                PlayableGuitarPlugin.PBLogger.LogWarning("Reconnection failed, continuing without MIDI device.");
             }
         }
 
@@ -202,6 +220,9 @@ namespace PrivateRyan.PlayableGuitar
             {
                 midiInputDevice.StopEventsListening();
                 midiInputDevice.Dispose();
+                midiInputDevice = null;
+                midiDeviceConnected = false;
+
                 PlayableGuitarPlugin.PBLogger.LogInfo("MIDI input device disconnected.");
             }
         }
@@ -227,4 +248,5 @@ namespace PrivateRyan.PlayableGuitar
             }
         }
     }
+
 }

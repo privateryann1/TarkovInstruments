@@ -1,4 +1,5 @@
-﻿using Comfort.Common;
+﻿using System.Collections;
+using Comfort.Common;
 using EFT;
 using PrivateRyan.PlayableGuitar.Helpers;
 using PrivateRyan.PlayableGuitar.Patches;
@@ -158,7 +159,6 @@ namespace PrivateRyan.PlayableGuitar
                 buffer[totalSamples - fadeSamples + i] *= fadeFactor;
             }
         }
-
         
         public void PlayNoteTriggered(int note, int velocity)
         {
@@ -174,6 +174,21 @@ namespace PrivateRyan.PlayableGuitar
             guitarSoundComponent.PlayClip(noteClip, 30, 1f);
             
             PlayableGuitarPlugin.PBLogger.LogInfo("Note playing, rendering audio...");
+            
+            StartCoroutine(ReleaseClipAfterPlay(noteClip, 5.0f));
+        }
+        
+        // Need to remove the audio clip from memory otherwise we hog all the rams :(
+        private IEnumerator ReleaseClipAfterPlay(AudioClip clip, float playTime)
+        {
+            yield return new WaitForSeconds(playTime);
+    
+            if (clip != null)
+            {
+                AudioClip.Destroy(clip);
+                clip = null;
+                PlayableGuitarPlugin.PBLogger.LogInfo("AudioClip released from memory");
+            }
         }
         
         private void ClearBuffer()

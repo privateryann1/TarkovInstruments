@@ -123,8 +123,14 @@ namespace PrivateRyan.PlayableGuitar.Helpers
         private static void DrawMidiSongSelection(ConfigEntryBase entry)
         {
             var midiSongs = Directory.GetFiles($"{Utils.GetPluginDirectory()}/Midi-Songs", "*.mid")
-                                     .Select(Path.GetFileName)
-                                     .ToArray();
+                .Select(Path.GetFileName)
+                .ToArray();
+
+            if (midiSongs.Length == 0)
+            {
+                UnityEngine.GUILayout.Label("No MIDI songs available.");
+                return;
+            }
 
             ConfigEntry<string> songEntry = (ConfigEntry<string>)entry;
             int selectedIndex = System.Array.IndexOf(midiSongs, songEntry.Value);
@@ -139,8 +145,14 @@ namespace PrivateRyan.PlayableGuitar.Helpers
         private static void DrawMIDIDeviceSelection(ConfigEntryBase entry)
         {
             var midiDevices = InputDevice.GetAll()
-                                         .Select(device => device.Name)
-                                         .ToArray();
+                .Select(device => device.Name)
+                .ToArray();
+
+            if (midiDevices.Length == 0)
+            {
+                UnityEngine.GUILayout.Label("No MIDI devices available.");
+                return;
+            }
 
             ConfigEntry<string> deviceEntry = (ConfigEntry<string>)entry;
             int selectedIndex = System.Array.IndexOf(midiDevices, deviceEntry.Value);
@@ -156,6 +168,12 @@ namespace PrivateRyan.PlayableGuitar.Helpers
             var soundFonts = Directory.GetFiles($"{Utils.GetPluginDirectory()}/SoundFonts", "*.sf2")
                 .Select(Path.GetFileName)
                 .ToArray();
+
+            if (soundFonts.Length == 0)
+            {
+                UnityEngine.GUILayout.Label("No SoundFonts available.");
+                return;
+            }
 
             ConfigEntry<string> soundFontEntry = (ConfigEntry<string>)entry;
             int selectedIndex = System.Array.IndexOf(soundFonts, soundFontEntry.Value);
