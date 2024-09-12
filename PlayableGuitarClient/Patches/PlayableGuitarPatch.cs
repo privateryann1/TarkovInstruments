@@ -2,6 +2,7 @@
 using EFT;
 using SPT.Reflection.Patching;
 using System.Reflection;
+using PrivateRyan.TarkovMIDI.Controllers;
 
 namespace PrivateRyan.PlayableGuitar.Patches
 {
@@ -26,7 +27,7 @@ namespace PrivateRyan.PlayableGuitar.Patches
                 return;
             }
 
-            TarkovMIDI.Controllers.MIDIController.InstrumentComponent = Singleton<GameWorld>.Instance.MainPlayer.gameObject.AddComponent<PlayableGuitarComponent>();
+            Singleton<GameWorld>.Instance.MainPlayer.gameObject.AddComponent<PlayableGuitarComponent>();
             PlayableGuitarPlugin.PBLogger.LogInfo("Added PG Component to player: " + Singleton<GameWorld>.Instance.MainPlayer.Profile.Nickname);
         }
     }

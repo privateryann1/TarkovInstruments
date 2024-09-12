@@ -191,7 +191,6 @@ namespace PrivateRyan.TarkovMIDI.Helpers
             if (UnityEngine.GUILayout.Button("Reconnect MIDI Device"))
             {
                 ReconnectMIDI.Value = true;
-                MIDIController.ReconnectToMIDI(SelectedMIDIDevice.Value);
             }
         }
 

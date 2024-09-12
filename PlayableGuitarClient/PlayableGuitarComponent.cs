@@ -3,6 +3,7 @@ using Comfort.Common;
 using EFT;
 using PrivateRyan.PlayableGuitar.Helpers;
 using PrivateRyan.PlayableGuitar.Patches;
+using PrivateRyan.TarkovMIDI.Controllers;
 using PrivateRyan.TarkovMIDI.Interfaces;
 using UnityEngine;
 
@@ -15,14 +16,14 @@ namespace PrivateRyan.PlayableGuitar
         private BaseSoundPlayer guitarSoundComponent;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
-        private TarkovMIDI.Controllers.MIDIController guitarMidi;
+        private MIDIController guitarMidi;
         
         private float[] buffer;
 
         protected void Awake()
         {
             player = (LocalPlayer)Singleton<GameWorld>.Instance.MainPlayer;
-            guitarMidi = new TarkovMIDI.Controllers.MIDIController();
+            guitarMidi = new MIDIController(this);
 
             if (player == null)
             {
@@ -66,7 +67,7 @@ namespace PrivateRyan.PlayableGuitar
                     return;
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
                 if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
-                    TarkovMIDI.Controllers.MIDIController.HasInstrument = true;
+                    guitarMidi.HasInstrument = true;
             }
             else
             {
@@ -74,26 +75,26 @@ namespace PrivateRyan.PlayableGuitar
                 WeaponAnimSpeedControllerPatch.Strumming = false;
                 songPlaying = false;
                 if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
-                    TarkovMIDI.Controllers.MIDIController.HasInstrument = false;
+                    guitarMidi.HasInstrument = false;
                 return;
             }
             
             // Check if the key to play the MIDI song is pressed
             if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && !songPlaying)
             {
-                TarkovMIDI.Controllers.MIDIController.PlayMidiSong();
+                guitarMidi.PlayMidiSong();
                 songPlaying = true;
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to play song");
             }
             else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && songPlaying)
             {
-                TarkovMIDI.Controllers.MIDIController.StopMidiSong();
+                guitarMidi.StopMidiSong();
                 songPlaying = false;
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to stop song");
             }
             
             // MIDI Stuff
-            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && TarkovMIDI.Controllers.MIDIController.NotePlaying)
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && guitarMidi.NotePlaying)
             {
                 currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
                 
@@ -102,7 +103,7 @@ namespace PrivateRyan.PlayableGuitar
 
                 WeaponAnimSpeedControllerPatch.Strumming = true;
             }
-            else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !TarkovMIDI.Controllers.MIDIController.NotePlaying)
+            else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !guitarMidi.NotePlaying)
             {
                 currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
                 currentKnifeController.OnFireEnd();
@@ -165,7 +166,7 @@ namespace PrivateRyan.PlayableGuitar
         {
             ClearBuffer();
             
-            TarkovMIDI.Controllers.MIDIController.SoundFont.RenderAudio(buffer);
+            guitarMidi.SoundFont.RenderAudio(buffer);
             
             ApplyFadeIn(buffer, 1000);
             ApplyFadeOut(buffer, 1000);

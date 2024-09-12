@@ -11,25 +11,27 @@ namespace PrivateRyan.TarkovMIDI.Controllers
 {
     public class MIDIController
     {
-        private static InputDevice midiInputDevice;
-        private static Playback midiPlayback;
+        private InputDevice midiInputDevice;
+        private Playback midiPlayback;
         
-        public static TinySoundFont SoundFont;
+        public TinySoundFont SoundFont;
         
-        private static Timer noteOffTimer;
-        private static double noteOffDelay = 2000;
-        public static bool NotePlaying = false;
+        private Timer noteOffTimer;
+        private double noteOffDelay = 2000;
+        public bool NotePlaying = false;
         
-        public static bool HasInstrument = false;
-        private static bool isSongPlaying = false;
-        private static bool midiDeviceConnected = false;
+        public bool HasInstrument = false;
+        private bool isSongPlaying = false;
+        private bool midiDeviceConnected = false;
         
-        public static IInstrumentComponent InstrumentComponent;
+        public IInstrumentComponent InstrumentComponent;
 
-        public MIDIController()
+        public MIDIController(IInstrumentComponent instrumentComponent)
         {
             if (!Settings.UseMIDI.Value)
                 return;
+         
+            InstrumentComponent = instrumentComponent;
             
             InitializeSoundFont();
             
@@ -52,7 +54,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             }
         }
 
-        private static void TryInitializeMidiDevice()
+        private void TryInitializeMidiDevice()
         {
             if (!Settings.AutoConnectMIDI.Value)
                 return;
@@ -99,7 +101,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             }
         }
 
-        private static void OnMidiEventReceived(object sender, MidiEventReceivedEventArgs e)
+        private void OnMidiEventReceived(object sender, MidiEventReceivedEventArgs e)
         {
             if (!HasInstrument)
                 return;
@@ -115,7 +117,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             }
         }
 
-        private static void PlayNoteForMIDI(int noteNumber, int velocity)
+        private void PlayNoteForMIDI(int noteNumber, int velocity)
         {
             SoundFont.PlayNote(noteNumber, velocity / 127f);
 
@@ -124,13 +126,13 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             noteOffTimer.Start();
         }
 
-        private static void StopNoteForMIDI(int noteNumber)
+        private void StopNoteForMIDI(int noteNumber)
         {
             SoundFont.StopNote(noteNumber);
             NotePlaying = false;
         }
 
-        public static async Task PlayMidiSong()
+        public async Task PlayMidiSong()
         {
             if (isSongPlaying)
             {
@@ -179,7 +181,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
         }
 
 
-        public static void StopMidiSong()
+        public void StopMidiSong()
         {
             if (!isSongPlaying || midiPlayback == null)
             {
@@ -193,13 +195,13 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             TarkovMIDIPlugin.PBLogger.LogInfo("MIDI song playback stopped.");
         }
 
-        private static void ResetNotePlaying(object sender, ElapsedEventArgs e)
+        private void ResetNotePlaying(object sender, ElapsedEventArgs e)
         {
             NotePlaying = false;
             TarkovMIDIPlugin.PBLogger.LogInfo("No note played recently, NotePlaying set to false.");
         }
 
-        public static void ReconnectToMIDI(string selectedDeviceName)
+        public void ReconnectToMIDI(string selectedDeviceName)
         {
             DisposeMidiInputDevice();
 
@@ -216,7 +218,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             }
         }
 
-        private static void DisposeMidiInputDevice()
+        private void DisposeMidiInputDevice()
         {
             if (midiInputDevice != null)
             {
@@ -233,22 +235,12 @@ namespace PrivateRyan.TarkovMIDI.Controllers
         {
             DisposeMidiInputDevice();
 
-            if (SoundFont != null)
-            {
-                SoundFont.Dispose();
-            }
-
-            if (noteOffTimer != null)
-            {
-                noteOffTimer.Stop();
-                noteOffTimer.Dispose();
-            }
-
-            if (midiPlayback != null)
-            {
-                midiPlayback.Dispose();
-            }
+            SoundFont?.Dispose();
+            noteOffTimer?.Stop();
+            noteOffTimer?.Dispose();
+            midiPlayback?.Dispose();
         }
+        
     }
 
 }
