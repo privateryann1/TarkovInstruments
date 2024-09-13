@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using System.Timers;
+using BepInEx.Configuration;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Multimedia;
 using PrivateRyan.TarkovMIDI.Helpers;

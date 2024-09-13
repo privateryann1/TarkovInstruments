@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using PrivateRyan.TarkovMIDI.Helpers;
 
 public class TinySoundFont
 {
@@ -22,6 +23,9 @@ public class TinySoundFont
 
     [DllImport("tinysoundfont.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void tsf_close(IntPtr soundFont);
+    
+    [DllImport("tinysoundfont.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int tsf_get_presetcount(IntPtr soundFont);
 
     public TinySoundFont(string soundFontPath)
     {
@@ -41,17 +45,22 @@ public class TinySoundFont
 
     public void PlayNote(int key, float velocity)
     {
-        tsf_note_on(soundFont, 0, key, velocity);
+        tsf_note_on(soundFont, Settings.SelectedSoundFontPreset.Value, key, velocity);
     }
 
     public void StopNote(int key)
     {
-        tsf_note_off(soundFont, 0, key);
+        tsf_note_off(soundFont, Settings.SelectedSoundFontPreset.Value, key);
     }
 
     public void RenderAudio(float[] buffer)
     {
         tsf_render_float(soundFont, buffer, buffer.Length / 2);
+    }
+
+    public int GetPresetCount()
+    {
+        return tsf_get_presetcount(soundFont);
     }
 
     public void Dispose()

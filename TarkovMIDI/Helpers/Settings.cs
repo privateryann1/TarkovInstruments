@@ -9,7 +9,9 @@ namespace PrivateRyan.TarkovMIDI.Helpers
 {
     public class Settings
     {
-        public const string GeneralSectionTitle = "1. MIDI Settings";
+        public const string MIDIDeviceSettings = "1. MIDI Device Settings";
+        public const string SoundFontSettings = "2. Soundfont Settings";
+        public const string MIDIPlaybackSettings = "3. MIDI Playback Settings";
 
         public static ConfigFile Config;
 
@@ -21,6 +23,7 @@ namespace PrivateRyan.TarkovMIDI.Helpers
         public static ConfigEntry<string> SelectedMidiSong;  // Select MIDI song
         public static ConfigEntry<UnityEngine.KeyCode> PlayMidiKey;  // Key to play the selected song
         public static ConfigEntry<string> SelectedSoundFont; // Config to select a SoundFont file
+        public static ConfigEntry<int> SelectedSoundFontPreset;
 
         public static List<ConfigEntryBase> ConfigEntries = new List<ConfigEntryBase>();
 
@@ -30,7 +33,7 @@ namespace PrivateRyan.TarkovMIDI.Helpers
 
             // Auto connect setting
             ConfigEntries.Add(UseMIDI = Config.Bind(
-                GeneralSectionTitle,
+                MIDIDeviceSettings,
                 "Enable MIDI",
                 false,  // Default value
                 new ConfigDescription(
@@ -41,13 +44,13 @@ namespace PrivateRyan.TarkovMIDI.Helpers
             
             // Auto connect setting
             ConfigEntries.Add(AutoConnectMIDI = Config.Bind(
-                GeneralSectionTitle,
+                MIDIDeviceSettings,
                 "Auto Connect",
                 true,  // Default value
                 new ConfigDescription(
                     "Auto connect to the MIDI device", 
                     null,
-                    new ConfigurationManagerAttributes { Order = 0 }
+                    new ConfigurationManagerAttributes { Order = 1 }
                 )));
 
             // MIDI device selection dropdown (using DryWetMIDI)
@@ -56,24 +59,24 @@ namespace PrivateRyan.TarkovMIDI.Helpers
                                          .ToArray();
 
             ConfigEntries.Add(SelectedMIDIDevice = Config.Bind(
-                GeneralSectionTitle,
+                MIDIDeviceSettings,
                 "MIDI Device",
                 midiDevices.FirstOrDefault(),  // Default to the first available device
                 new ConfigDescription(
                     "Select the MIDI device to use",
                     null,
-                    new ConfigurationManagerAttributes { Order = 1, CustomDrawer = DrawMIDIDeviceSelection }
+                    new ConfigurationManagerAttributes { Order = 2, CustomDrawer = DrawMIDIDeviceSelection }
                 )));
 
             // Reconnect button
             ConfigEntries.Add(ReconnectMIDI = Config.Bind(
-                GeneralSectionTitle,
+                MIDIDeviceSettings,
                 "Reconnect MIDI",
                 false,  // This will act as a button, not a persistent value
                 new ConfigDescription(
                     "Press to reconnect the selected MIDI device",
                     null,
-                    new ConfigurationManagerAttributes { Order = 2, CustomDrawer = DrawReconnectButton }
+                    new ConfigurationManagerAttributes { Order = 3, CustomDrawer = DrawReconnectButton }
                 )));
 
             // Select MIDI Song
@@ -82,24 +85,24 @@ namespace PrivateRyan.TarkovMIDI.Helpers
                                      .ToArray();
 
             ConfigEntries.Add(SelectedMidiSong = Config.Bind(
-                GeneralSectionTitle,
+                MIDIPlaybackSettings,
                 "MIDI Song",
                 midiSongs.FirstOrDefault(), // Default to the first available song
                 new ConfigDescription(
                     "Select the MIDI song to play",
                     null,
-                    new ConfigurationManagerAttributes { Order = 3, CustomDrawer = DrawMidiSongSelection }
+                    new ConfigurationManagerAttributes { Order = 4, CustomDrawer = DrawMidiSongSelection }
                 )));
 
             // Key binding to play the selected song
             ConfigEntries.Add(PlayMidiKey = Config.Bind(
-                GeneralSectionTitle,
+                MIDIPlaybackSettings,
                 "Play MIDI Song Key",
                 UnityEngine.KeyCode.P,  // Default key is P
                 new ConfigDescription(
                     "Assign a key to play the selected MIDI song",
                     null,
-                    new ConfigurationManagerAttributes { Order = 4 }
+                    new ConfigurationManagerAttributes { Order = 5 }
                 )));
             
             // SoundFont selection dropdown
@@ -108,13 +111,23 @@ namespace PrivateRyan.TarkovMIDI.Helpers
                 .ToArray();
             
             ConfigEntries.Add(SelectedSoundFont = Config.Bind(
-                GeneralSectionTitle,
+                SoundFontSettings,
                 "SoundFont",
                 soundFonts.FirstOrDefault(),  // Default to the first available SoundFont
                 new ConfigDescription(
                     "Select the SoundFont to use for MIDI playback",
                     null,
-                    new ConfigurationManagerAttributes { Order = 5, CustomDrawer = DrawSoundFontSelection }
+                    new ConfigurationManagerAttributes { Order = 6, CustomDrawer = DrawSoundFontSelection }
+                )));
+            
+            ConfigEntries.Add(SelectedSoundFontPreset = Config.Bind(
+                SoundFontSettings,
+                "SoundFont Preset",
+                0,
+                new ConfigDescription(
+                    "Select the SoundFont preset to use",
+                    new AcceptableValueRange<int>(0, 10),
+                    new ConfigurationManagerAttributes { Order = 7}
                 )));
 
             RecalcOrder();
