@@ -23,3 +23,9 @@ namespace PrivateRyan.PlayableGuitar
         
     }
 }
+
+// TODO:
+// Instead of playing each note event on a single audio clip,
+// Use an AudioSource to continuously stream the audio.
+// Hopefully this stops the crashing? Otherwise the issue might be
+// with TinySoundFont, which could be a pain to figure out
