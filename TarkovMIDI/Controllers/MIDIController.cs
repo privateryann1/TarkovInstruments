@@ -68,9 +68,9 @@ namespace PrivateRyan.TarkovMIDI.Controllers
                     midiDeviceConnected = false;
                     TarkovMIDIPlugin.PBLogger.LogWarning("No MIDI devices available. Continuing without a device.");
                     
-                    noteOffTimer = new Timer(noteOffDelay);
-                    noteOffTimer.Elapsed += ResetNotePlaying;
-                    noteOffTimer.AutoReset = false;
+                    //noteOffTimer = new Timer(noteOffDelay);
+                    //noteOffTimer.Elapsed += ResetNotePlaying;
+                    //noteOffTimer.AutoReset = false;
                     
                     return;
                 }
@@ -91,9 +91,9 @@ namespace PrivateRyan.TarkovMIDI.Controllers
                     TarkovMIDIPlugin.PBLogger.LogWarning($"Selected MIDI input device '{selectedDeviceName}' not found. Continuing without a device.");
                 }
                 
-                noteOffTimer = new Timer(noteOffDelay);
-                noteOffTimer.Elapsed += ResetNotePlaying;
-                noteOffTimer.AutoReset = false;
+                //noteOffTimer = new Timer(noteOffDelay);
+                //noteOffTimer.Elapsed += ResetNotePlaying;
+                //noteOffTimer.AutoReset = false;
             }
             catch (Exception ex)
             {
@@ -123,8 +123,8 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             SoundFont.PlayNote(noteNumber, velocity / 127f);
 
             NotePlaying = true;
-            noteOffTimer.Stop();
-            noteOffTimer.Start();
+            //noteOffTimer.Stop();
+            //noteOffTimer.Start();
         }
 
         private void StopNoteForMIDI(int noteNumber)
@@ -237,8 +237,8 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             DisposeMidiInputDevice();
 
             SoundFont?.Dispose();
-            noteOffTimer?.Stop();
-            noteOffTimer?.Dispose();
+            //noteOffTimer?.Stop();
+            //noteOffTimer?.Dispose();
             midiPlayback?.Dispose();
         }
         

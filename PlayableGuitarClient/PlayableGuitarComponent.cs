@@ -169,7 +169,7 @@ namespace PrivateRyan.PlayableGuitar
         {
             if (audioClipPool.Count > 0)
             {
-                PlayableGuitarPlugin.PBLogger.LogInfo("Using Pooled Clip");
+                // PlayableGuitarPlugin.PBLogger.LogInfo("Using Pooled Clip");
                 return audioClipPool.Dequeue();
             }
             else
@@ -233,7 +233,7 @@ namespace PrivateRyan.PlayableGuitar
             if (clip != null)
             {
                 ReturnClipToPool(clip);
-                PlayableGuitarPlugin.PBLogger.LogInfo("AudioClip returned to pool");
+                // PlayableGuitarPlugin.PBLogger.LogInfo("AudioClip returned to pool");
             }
         }
 
