@@ -22,7 +22,7 @@ namespace PrivateRyan.PlayableGuitar
         private float[] buffer;
         
         private Queue<AudioClip> audioClipPool = new Queue<AudioClip>();
-        private const int PoolSize = 20;
+        private const int PoolSize = 40;
         private const int ClipDurationInSamples = 44100 * 3;
 
         protected void Awake()
@@ -78,7 +78,9 @@ namespace PrivateRyan.PlayableGuitar
                 currentKnifeController = handsController as Player.BaseKnifeController;
                 if (currentKnifeController == null)
                     return;
+                
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
+                
                 if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
                     guitarMidi.HasInstrument = true;
             }
@@ -87,8 +89,10 @@ namespace PrivateRyan.PlayableGuitar
                 // Not a guitar, reset values and return
                 WeaponAnimSpeedControllerPatch.Strumming = false;
                 songPlaying = false;
+                
                 if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
                     guitarMidi.HasInstrument = false;
+                
                 return;
             }
             
@@ -96,35 +100,29 @@ namespace PrivateRyan.PlayableGuitar
             if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && !songPlaying)
             {
                 guitarMidi.PlayMidiSong();
-                songPlaying = true;
+                SongPlaying();
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to play song");
-            }
-            else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && songPlaying)
-            {
-                guitarMidi.StopMidiSong();
-                songPlaying = false;
-                PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to stop song");
+                return;
             }
             
-            // MIDI Stuff
-            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && guitarMidi.NotePlaying)
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && songPlaying)
             {
-                currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
-                
-                currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
-                currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", true);
-
-                WeaponAnimSpeedControllerPatch.Strumming = true;
+                guitarMidi.StopMidiSong();
+                SongEnd();
+                PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to stop song");
+                return;
             }
-            else if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !guitarMidi.NotePlaying)
+            
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && guitarMidi.NotePlaying && !songPlaying)
             {
-                currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
-                currentKnifeController.OnFireEnd();
-                
-                currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
-                currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", false);
-                
-                WeaponAnimSpeedControllerPatch.Strumming = false;
+                SongPlaying();
+                return;
+            }
+            
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !guitarMidi.NotePlaying && !songPlaying)
+            {
+                SongEnd();
+                return;
             }
             
             // Handle normal song playing
@@ -155,6 +153,27 @@ namespace PrivateRyan.PlayableGuitar
             }
             
         }
+
+        private void SongPlaying()
+        {
+            currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
+            currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
+            currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", true);
+            WeaponAnimSpeedControllerPatch.Strumming = true;
+            songPlaying = true;
+            PlayableGuitarPlugin.PBLogger.LogInfo("Song Playing True");
+        }
+        
+        private void SongEnd()
+        {
+            currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
+            currentKnifeController.OnFireEnd();
+            currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
+            currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", false);
+            WeaponAnimSpeedControllerPatch.Strumming = false;
+            songPlaying = false;
+            PlayableGuitarPlugin.PBLogger.LogInfo("Song Playing False");
+        }
         
         private void InitializeAudioClipPool()
         {
@@ -163,6 +182,7 @@ namespace PrivateRyan.PlayableGuitar
                 AudioClip clip = AudioClip.Create("PooledClip", ClipDurationInSamples, 2, 44100, false);
                 audioClipPool.Enqueue(clip);
             }
+            PlayableGuitarPlugin.PBLogger.LogWarning($"Pool initialized with {PoolSize} clips");
         }
         
         private AudioClip GetPooledClip()
@@ -174,8 +194,8 @@ namespace PrivateRyan.PlayableGuitar
             }
             else
             {
-                PlayableGuitarPlugin.PBLogger.LogWarning("Using Extra Clip");
-                return AudioClip.Create("ExtraClip", ClipDurationInSamples, 2, 44100, false);
+                PlayableGuitarPlugin.PBLogger.LogWarning("No pooled clips available");
+                return null;
             }
         }
         
@@ -213,6 +233,11 @@ namespace PrivateRyan.PlayableGuitar
             ApplyFadeOut(buffer, 1000);
             
             AudioClip noteClip = GetPooledClip();
+            if (noteClip == null)
+                return;
+            
+            if (buffer.Length != noteClip.samples * noteClip.channels)
+                PlayableGuitarPlugin.PBLogger.LogError("Buffer size mismatch with AudioClip.");
             
             noteClip.SetData(buffer, 0);
             
