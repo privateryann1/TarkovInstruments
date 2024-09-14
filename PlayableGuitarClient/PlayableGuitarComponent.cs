@@ -1,8 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Comfort.Common;
+﻿using Comfort.Common;
 using EFT;
-using PrivateRyan.PlayableGuitar.Helpers;
 using PrivateRyan.PlayableGuitar.Patches;
 using PrivateRyan.TarkovMIDI.Controllers;
 using PrivateRyan.TarkovMIDI.Interfaces;
@@ -15,15 +12,10 @@ namespace PrivateRyan.PlayableGuitar
         public LocalPlayer player;
         private bool songPlaying = false;
         private BaseSoundPlayer guitarSoundComponent;
+        private PlayableGuitarSoundHandler guitarSoundHandler;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
         private MIDIController guitarMidi;
-        
-        private float[] buffer;
-        
-        private Queue<AudioClip> audioClipPool = new Queue<AudioClip>();
-        private const int PoolSize = 40;
-        private const int ClipDurationInSamples = 44100 * 3;
 
         protected void Awake()
         {
@@ -41,10 +33,6 @@ namespace PrivateRyan.PlayableGuitar
                 guitarMidi.Dispose();
                 Destroy(this);
             }
-            
-            buffer = new float[44100 * 3 * 2];
-            
-            InitializeAudioClipPool();
         }
         
         protected void Update()
@@ -80,6 +68,12 @@ namespace PrivateRyan.PlayableGuitar
                     return;
                 
                 guitarSoundComponent = currentKnifeController.ControllerGameObject.GetComponent<BaseSoundPlayer>();
+                if (guitarSoundHandler == null)
+                {
+                    guitarSoundHandler = currentKnifeController.ControllerGameObject.AddComponent<PlayableGuitarSoundHandler>();
+                    guitarSoundHandler.Initialize(guitarMidi);
+                }
+                    
                 
                 if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
                     guitarMidi.HasInstrument = true;
@@ -175,99 +169,14 @@ namespace PrivateRyan.PlayableGuitar
             PlayableGuitarPlugin.PBLogger.LogInfo("Song Playing False");
         }
         
-        private void InitializeAudioClipPool()
-        {
-            for (int i = 0; i < PoolSize; i++)
-            {
-                AudioClip clip = AudioClip.Create("PooledClip", ClipDurationInSamples, 2, 44100, false);
-                audioClipPool.Enqueue(clip);
-            }
-            PlayableGuitarPlugin.PBLogger.LogWarning($"Pool initialized with {PoolSize} clips");
-        }
-        
-        private AudioClip GetPooledClip()
-        {
-            if (audioClipPool.Count > 0)
-            {
-                // PlayableGuitarPlugin.PBLogger.LogInfo("Using Pooled Clip");
-                return audioClipPool.Dequeue();
-            }
-            else
-            {
-                PlayableGuitarPlugin.PBLogger.LogWarning("No pooled clips available");
-                return null;
-            }
-        }
-        
-        private void ReturnClipToPool(AudioClip clip)
-        {
-            audioClipPool.Enqueue(clip);
-        }
-
-        private void ApplyFadeIn(float[] buffer, int fadeSamples)
-        {
-            for (int i = 0; i < fadeSamples; i++)
-            {
-                float fadeFactor = (float)i / fadeSamples;
-                buffer[i] *= fadeFactor;
-            }
-        }
-
-        private void ApplyFadeOut(float[] buffer, int fadeSamples)
-        {
-            int totalSamples = buffer.Length;
-            for (int i = 0; i < fadeSamples; i++)
-            {
-                float fadeFactor = (float)(fadeSamples - i) / fadeSamples;
-                buffer[totalSamples - fadeSamples + i] *= fadeFactor;
-            }
-        }
-        
         public void PlayNoteTriggered(int note, int velocity)
         {
-            ClearBuffer();
-            
-            guitarMidi.SoundFont.RenderAudio(buffer);
-            
-            ApplyFadeIn(buffer, 1000);
-            ApplyFadeOut(buffer, 1000);
-            
-            AudioClip noteClip = GetPooledClip();
-            if (noteClip == null)
-                return;
-            
-            if (buffer.Length != noteClip.samples * noteClip.channels)
-                PlayableGuitarPlugin.PBLogger.LogError("Buffer size mismatch with AudioClip.");
-            
-            noteClip.SetData(buffer, 0);
-            
-            guitarSoundComponent.PlayClip(noteClip, 30, Settings.GuitarVolume.Value);
-            
-            StartCoroutine(ReturnClipToPoolAfterPlay(noteClip, 3.0f));
+            guitarSoundHandler.PlayNoteTriggered(note, velocity);
         }
 
         public void StopNoteTriggered(int note)
         {
-            
-        }
-        
-        private IEnumerator ReturnClipToPoolAfterPlay(AudioClip clip, float playTime)
-        {
-            yield return new WaitForSeconds(playTime);
-
-            if (clip != null)
-            {
-                ReturnClipToPool(clip);
-                // PlayableGuitarPlugin.PBLogger.LogInfo("AudioClip returned to pool");
-            }
-        }
-
-        private void ClearBuffer()
-        {
-            for (int i = 0; i < buffer.Length; i++)
-            {
-                buffer[i] = 0f;
-            }
+            guitarSoundHandler.StopNoteTriggered(note);
         }
     }
 }
