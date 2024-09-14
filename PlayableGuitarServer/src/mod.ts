@@ -1,96 +1,143 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
-import * as fs from "fs";
-import * as path from "path";
-
 import { DependencyContainer } from "tsyringe";
+
 import { IPostDBLoadMod } from "@spt/models/external/IPostDBLoadMod";
-import { IpreSptLoadMod } from "@spt/models/external/IpreSptLoadMod";
-import { LogTextColor } from "@spt/models/spt/logging/LogTextColor";
+import { CustomItemService } from "@spt/services/mod/CustomItemService";
+import { NewItemFromCloneDetails } from "@spt/models/spt/mod/NewItemDetails";
+import { IPostSptLoadMod } from "@spt/models/external/IPostSptLoadMod";
+import { DatabaseServer } from "@spt/servers/DatabaseServer";
+import { IDatabaseTables } from "@spt/models/spt/server/IDatabaseTables";
 
-// WTT imports
-import { WTTInstanceManager } from "./WTTInstanceManager";
+import {
+    Preset,
+    Item,
+    ConfigItem,
+    traderIDs,
+    currencyIDs,
+    allBotTypes,
+    inventorySlots
+} from "./references/configConsts";
 
-// Boss imports
-import { CustomItemService } from "./CustomItemService";
+import { ItemMap } from "./references/items";
 
-// Custom Trader Assort Items
-import { CustomAssortSchemeService } from "./CustomAssortSchemeService";
-import { CustomWeaponPresets } from "./CustomWeaponPresets";
-
-
-
-class PlayableGuitar
-implements IpreSptLoadMod, IPostDBLoadMod
+class Mod implements IPostDBLoadMod, IPostSptLoadMod
 {
-    private Instance: WTTInstanceManager = new WTTInstanceManager();
-    private version: string;
-    private modName = "PlayableGuitar";
-    private config;
+    private database: IDatabaseTables;
+    private configs: ConfigItem;
 
-    //#region CustomBosses
-    private customItemService: CustomItemService = new CustomItemService();
-    //#endregion
-
-    private customAssortSchemeService: CustomAssortSchemeService = new CustomAssortSchemeService();
-    private customWeaponPresets: CustomWeaponPresets = new CustomWeaponPresets();
-
-    debug = false;
-
-    // Anything that needs done on preSptLoad, place here.
-    public preSptLoad(container: DependencyContainer): void
+    public postDBLoad(container: DependencyContainer): void
     {
-    // Initialize the instance manager DO NOTHING ELSE BEFORE THIS
-        this.Instance.preSptLoad(container, this.modName);
-        this.Instance.debug = this.debug;
-        // EVERYTHING AFTER HERE MUST USE THE INSTANCE
+        this.database = container.resolve<DatabaseServer>("DatabaseServer").getTables();
 
-        this.getVersionFromJson();
+        const CustomItem = container.resolve<CustomItemService>("CustomItemService");
 
-        // Custom Bosses
-        this.customItemService.preSptLoad(this.Instance);
+        const ExampleCloneItem: NewItemFromCloneDetails = {
+            itemTplToClone: "65ca457b4aafb5d7fc0dcb5d",
+            overrideProperties: {
+			    ExaminedByDefault: true,
+			    Width: 3,
+			    Height: 2,
+			    Weight: 0.87,
+			    Prefab: {
+			    	path: "WeaponGuitar/guitar.bundle",
+			    	rcid: ""
+			    }
+		    },
+            parentId: "5447e1d04bdc2dff2f8b4567",
+            newId: "66b9de8cg34d905aa32b5f60c",
+            fleaPriceRoubles: 50000,
+            handbookPriceRoubles: 42500,
+            handbookParentId: "5b5f7a0886f77409407a7f96",
+            locales: {
+			    en: {
+			    	name: "Acoustic Guitar",
+			    	shortName: "Guitar",
+			    	description: "A playable acoustic guitar."
+			    }
+		    },
+            addtoTraders: true,
+		    traderId: "RAGMAN",
+		    traderItems: [
+		    	{
+		    		unlimitedCount: true,
+		    		stackObjectsCount: 99
+		    	}
+		    ],
+		    barterScheme: [
+		    	{
+		    		count: 55000,
+		    		_tpl: "ROUBLES"
+		    	}
+		    ],
+		    loyallevelitems: 2,
+        };
 
-        this.customAssortSchemeService.preSptLoad(this.Instance);
+        this.processTraders(ExampleCloneItem, ExampleCloneItem.newId);
 
-        this.customWeaponPresets.preSptLoad(this.Instance);
-
+        CustomItem.createItemFromClone(ExampleCloneItem);
     }
 
-    // Anything that needs done on postDBLoad, place here.
-    postDBLoad(container: DependencyContainer): void
+    private processTraders(
+        itemConfig: ConfigItem[string],
+        itemId: string
+    ): void
     {
-    // Initialize the instance manager DO NOTHING ELSE BEFORE THIS
-        this.Instance.postDBLoad(container);
-        // EVERYTHING AFTER HERE MUST USE THE INSTANCE
-
-
-        // Bosses
-        this.customItemService.postDBLoad();
-
-        this.customAssortSchemeService.postDBLoad();
-        this.customWeaponPresets.postDBLoad();
-        this.Instance.logger.log(
-            `[${this.modName}] Database: Loading complete.`,
-            LogTextColor.GREEN
-        );
-    }
-
-    private getVersionFromJson(): void
-    {
-        const packageJsonPath = path.join(__dirname, "../package.json");
-
-        fs.readFile(packageJsonPath, "utf-8", (err, data) =>
+        const tables = this.database;
+        if (!itemConfig.addtoTraders)
         {
-            if (err)
+            return;
+        }
+
+        const { traderId, traderItems, barterScheme } = itemConfig;
+
+        const traderIdFromMap = traderIDs[traderId];
+        const finalTraderId = traderIdFromMap || traderId;
+        const trader = tables.traders[finalTraderId];
+
+        if (!trader)
+        {
+            return;
+        }
+
+        for (const item of traderItems)
+        {
+            const newItem = {
+                _id: itemId,
+                _tpl: itemId,
+                parentId: "hideout",
+                slotId: "hideout",
+                upd: {
+                    UnlimitedCount: item.unlimitedCount,
+                    StackObjectsCount: item.stackObjectsCount
+                }
+            };
+
+            trader.assort.items.push(newItem);
+        }
+
+        trader.assort.barter_scheme[itemId] = [];
+
+        for (const scheme of barterScheme)
+        {
+            const count = scheme.count;
+            const tpl = currencyIDs[scheme._tpl] || ItemMap[scheme._tpl];
+
+            if (!tpl)
             {
-                console.error("Error reading file:", err);
-                return;
+                throw new Error(
+                    `Invalid _tpl value in barterScheme for item: ${itemId}`
+                );
             }
 
-            const jsonData = JSON.parse(data);
-            this.version = jsonData.version;
-        });
+            trader.assort.barter_scheme[itemId].push([
+                {
+                    count: count,
+                    _tpl: tpl
+                }
+            ]);
+        }
+
+        trader.assort.loyal_level_items[itemId] = itemConfig.loyallevelitems;
     }
 }
 
-module.exports = { mod: new PlayableGuitar() };
+export const mod = new Mod();
