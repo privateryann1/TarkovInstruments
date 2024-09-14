@@ -10,12 +10,12 @@ namespace PrivateRyan.PlayableGuitar
     internal class PlayableGuitarComponent : MonoBehaviour, IInstrumentComponent
     {
         public LocalPlayer player;
-        private bool songPlaying = false;
         private BaseSoundPlayer guitarSoundComponent;
         private PlayableGuitarSoundHandler guitarSoundHandler;
         private Player.AbstractHandsController handsController;
         private Player.BaseKnifeController currentKnifeController;
         private MIDIController guitarMidi;
+        private bool normalSongPlaying;
 
         protected void Awake()
         {
@@ -81,50 +81,59 @@ namespace PrivateRyan.PlayableGuitar
             else
             {
                 // Not a guitar, reset values and return
-                WeaponAnimSpeedControllerPatch.Strumming = false;
-                songPlaying = false;
-                
-                if (TarkovMIDI.Helpers.Settings.UseMIDI.Value)
+                if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && guitarMidi != null)
+                {
                     guitarMidi.HasInstrument = false;
+                    if (guitarMidi.SongPlaying)
+                    {
+                        guitarMidi.StopMidiSong();
+                    }
+                }
+                
+                WeaponAnimSpeedControllerPatch.Strumming = false;
+                normalSongPlaying = false;
                 
                 return;
             }
             
-            // Check if the key to play the MIDI song is pressed
-            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && !songPlaying)
+            // MIDI Song Start
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && !guitarMidi.SongPlaying)
             {
                 guitarMidi.PlayMidiSong();
-                SongPlaying();
+                PlayStrumming();
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to play song");
                 return;
             }
             
-            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && songPlaying)
+            // MIDI Song End
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && Input.GetKeyDown(TarkovMIDI.Helpers.Settings.PlayMidiKey.Value) && guitarMidi.SongPlaying)
             {
                 guitarMidi.StopMidiSong();
-                SongEnd();
+                EndStrumming();
                 PlayableGuitarPlugin.PBLogger.LogInfo("Telling MIDI to stop song");
                 return;
             }
             
-            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && guitarMidi.NotePlaying && !songPlaying)
+            // MIDI Note Play
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && !WeaponAnimSpeedControllerPatch.Strumming && guitarMidi.NotePlaying && !guitarMidi.SongPlaying)
             {
-                SongPlaying();
+                PlayStrumming();
                 return;
             }
             
-            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !guitarMidi.NotePlaying && !songPlaying)
+            // MIDI Note End
+            if (TarkovMIDI.Helpers.Settings.UseMIDI.Value && WeaponAnimSpeedControllerPatch.Strumming && !guitarMidi.NotePlaying && !guitarMidi.SongPlaying)
             {
-                SongEnd();
+                EndStrumming();
                 return;
             }
             
             // Handle normal song playing
-            if (WeaponAnimSpeedControllerPatch.Strumming && !songPlaying && !TarkovMIDI.Helpers.Settings.UseMIDI.Value)
+            if (WeaponAnimSpeedControllerPatch.Strumming && !normalSongPlaying && !TarkovMIDI.Helpers.Settings.UseMIDI.Value)
             {
                 // Player is strumming, but song is not playing yet
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is strumming and no song is playing");
-                songPlaying = true;
+                normalSongPlaying = true;
 
                 if (guitarSoundComponent != null)
                 {
@@ -132,11 +141,11 @@ namespace PrivateRyan.PlayableGuitar
                     guitarSoundComponent.SoundEventHandler("Song");
                     currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
                 }
-            } else if (!WeaponAnimSpeedControllerPatch.Strumming && songPlaying && !TarkovMIDI.Helpers.Settings.UseMIDI.Value)
+            } else if (!WeaponAnimSpeedControllerPatch.Strumming && normalSongPlaying && !TarkovMIDI.Helpers.Settings.UseMIDI.Value)
             {
                 // Player is no longer strumming, and the song is still playing
                 PlayableGuitarPlugin.PBLogger.LogInfo("Player is no longer strumming");
-                songPlaying = false;
+                normalSongPlaying = false;
                 
                 if (guitarSoundComponent != null)
                 {
@@ -148,24 +157,22 @@ namespace PrivateRyan.PlayableGuitar
             
         }
 
-        private void SongPlaying()
+        private void PlayStrumming()
         {
             currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, true);
             currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", true);
             currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", true);
             WeaponAnimSpeedControllerPatch.Strumming = true;
-            songPlaying = true;
             PlayableGuitarPlugin.PBLogger.LogInfo("Song Playing True");
         }
         
-        private void SongEnd()
+        private void EndStrumming()
         {
             currentKnifeController.FirearmsAnimator.Animator.SetBool(WeaponAnimationSpeedControllerClass.BOOL_ALTFIRE, false);
             currentKnifeController.OnFireEnd();
             currentKnifeController.FirearmsAnimator.Animator.SetBool("SongPlaying", false);
             currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", false);
             WeaponAnimSpeedControllerPatch.Strumming = false;
-            songPlaying = false;
             PlayableGuitarPlugin.PBLogger.LogInfo("Song Playing False");
         }
         

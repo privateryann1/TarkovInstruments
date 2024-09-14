@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using System.Timers;
-using BepInEx.Configuration;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Multimedia;
 using PrivateRyan.TarkovMIDI.Helpers;
@@ -22,7 +21,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
         public bool NotePlaying = false;
         
         public bool HasInstrument = false;
-        private bool isSongPlaying = false;
+        public bool SongPlaying = false;
         private bool midiDeviceConnected = false;
         
         public IInstrumentComponent InstrumentComponent;
@@ -68,9 +67,9 @@ namespace PrivateRyan.TarkovMIDI.Controllers
                     midiDeviceConnected = false;
                     TarkovMIDIPlugin.PBLogger.LogWarning("No MIDI devices available. Continuing without a device.");
                     
-                    //noteOffTimer = new Timer(noteOffDelay);
-                    //noteOffTimer.Elapsed += ResetNotePlaying;
-                    //noteOffTimer.AutoReset = false;
+                    noteOffTimer = new Timer(noteOffDelay);
+                    noteOffTimer.Elapsed += ResetNotePlaying;
+                    noteOffTimer.AutoReset = false;
                     
                     return;
                 }
@@ -91,9 +90,9 @@ namespace PrivateRyan.TarkovMIDI.Controllers
                     TarkovMIDIPlugin.PBLogger.LogWarning($"Selected MIDI input device '{selectedDeviceName}' not found. Continuing without a device.");
                 }
                 
-                //noteOffTimer = new Timer(noteOffDelay);
-                //noteOffTimer.Elapsed += ResetNotePlaying;
-                //noteOffTimer.AutoReset = false;
+                noteOffTimer = new Timer(noteOffDelay);
+                noteOffTimer.Elapsed += ResetNotePlaying;
+                noteOffTimer.AutoReset = false;
             }
             catch (Exception ex)
             {
@@ -111,31 +110,32 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             {
                 PlayNoteForMIDI(noteOn.NoteNumber, noteOn.Velocity);
                 InstrumentComponent.PlayNoteTriggered(noteOn.NoteNumber, noteOn.Velocity);
+
+                NotePlaying = true;
+                noteOffTimer.Stop();
+                noteOffTimer.Start();
             }
             else if (e.Event is NoteOffEvent noteOff)
             {
                 StopNoteForMIDI(noteOff.NoteNumber);
+                NotePlaying = false;
+                noteOffTimer.Stop();
             }
         }
 
         private void PlayNoteForMIDI(int noteNumber, int velocity)
         {
             SoundFont.PlayNote(noteNumber, velocity / 127f);
-
-            NotePlaying = true;
-            //noteOffTimer.Stop();
-            //noteOffTimer.Start();
         }
 
         private void StopNoteForMIDI(int noteNumber)
         {
             SoundFont.StopNote(noteNumber);
-            NotePlaying = false;
         }
 
         public async Task PlayMidiSong()
         {
-            if (isSongPlaying)
+            if (SongPlaying)
             {
                 TarkovMIDIPlugin.PBLogger.LogWarning("A song is already playing.");
                 return;
@@ -150,7 +150,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
                 MidiFile midiFile = MidiFile.Read(selectedSongPath);
         
                 midiPlayback = midiFile.GetPlayback();
-                isSongPlaying = true;
+                SongPlaying = true;
                 
                 midiPlayback.EventPlayed += (obj, args) =>
                 {
@@ -167,7 +167,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
         
                 midiPlayback.Finished += (s, e) =>
                 {
-                    isSongPlaying = false;
+                    SongPlaying = false;
                     TarkovMIDIPlugin.PBLogger.LogInfo("MIDI song playback finished.");
                 };
 
@@ -184,14 +184,14 @@ namespace PrivateRyan.TarkovMIDI.Controllers
 
         public void StopMidiSong()
         {
-            if (!isSongPlaying || midiPlayback == null)
+            if (!SongPlaying || midiPlayback == null)
             {
                 TarkovMIDIPlugin.PBLogger.LogWarning("No MIDI song is currently playing.");
                 return;
             }
 
             midiPlayback.Stop();
-            isSongPlaying = false;
+            SongPlaying = false;
 
             TarkovMIDIPlugin.PBLogger.LogInfo("MIDI song playback stopped.");
         }
