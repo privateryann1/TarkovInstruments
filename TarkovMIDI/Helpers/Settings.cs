@@ -20,6 +20,7 @@ namespace PrivateRyan.TarkovMIDI.Helpers
         public static ConfigEntry<bool> AutoConnectMIDI;
         public static ConfigEntry<string> SelectedMIDIDevice;
         public static ConfigEntry<bool> ReconnectMIDI;
+        public static ConfigEntry<bool> ReloadSoundFont;
         public static ConfigEntry<string> SelectedMidiSong;  // Select MIDI song
         public static ConfigEntry<UnityEngine.KeyCode> PlayMidiKey;  // Key to play the selected song
         public static ConfigEntry<string> SelectedSoundFont; // Config to select a SoundFont file
@@ -126,8 +127,18 @@ namespace PrivateRyan.TarkovMIDI.Helpers
                 0,
                 new ConfigDescription(
                     "Select the SoundFont preset to use",
-                    new AcceptableValueRange<int>(0, 10),
+                    new AcceptableValueRange<int>(0, 30),
                     new ConfigurationManagerAttributes { Order = 7}
+                )));
+            
+            ConfigEntries.Add(ReloadSoundFont = Config.Bind(
+                SoundFontSettings,
+                "Reload SoundFont",
+                false,  // This will act as a button, not a persistent value
+                new ConfigDescription(
+                    "Reloads the SoundFont, use when changing SoundFonts",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 8, CustomDrawer = DrawReloadSoundFontButton }
                 )));
 
             RecalcOrder();
@@ -204,6 +215,14 @@ namespace PrivateRyan.TarkovMIDI.Helpers
             if (UnityEngine.GUILayout.Button("Reconnect MIDI Device"))
             {
                 ReconnectMIDI.Value = true;
+            }
+        }
+        
+        private static void DrawReloadSoundFontButton(ConfigEntryBase entry)
+        {
+            if (UnityEngine.GUILayout.Button("Reload SoundFont"))
+            {
+                ReloadSoundFont.Value = true;
             }
         }
 

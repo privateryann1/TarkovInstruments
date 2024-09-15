@@ -49,8 +49,18 @@ namespace PrivateRyan.PlayableGuitar
 
             if (TarkovMIDI.Helpers.Settings.ReconnectMIDI.Value)
             {
-                guitarMidi.ReconnectToMIDI(TarkovMIDI.Helpers.Settings.SelectedMIDIDevice.Value);
+                guitarMidi.ReconnectToMIDI();
                 TarkovMIDI.Helpers.Settings.ReconnectMIDI.Value = false;
+            }
+            
+            if (TarkovMIDI.Helpers.Settings.ReloadSoundFont.Value)
+            {
+                if (guitarSoundHandler != null)
+                {
+                    guitarSoundHandler.IsNotePlaying = false;
+                }
+                guitarMidi.ReloadSoundFont();
+                TarkovMIDI.Helpers.Settings.ReloadSoundFont.Value = false;
             }
 
             if (handsController == null)
@@ -86,6 +96,7 @@ namespace PrivateRyan.PlayableGuitar
                     guitarMidi.HasInstrument = false;
                     if (guitarMidi.SongPlaying)
                     {
+                        guitarSoundHandler.IsNotePlaying = false;
                         guitarMidi.StopMidiSong();
                     }
                 }
@@ -174,6 +185,11 @@ namespace PrivateRyan.PlayableGuitar
             currentKnifeController.FirearmsAnimator.Animator.SetBool("Strumming", false);
             WeaponAnimSpeedControllerPatch.Strumming = false;
             PlayableGuitarPlugin.PBLogger.LogInfo("Song Playing False");
+
+            if (guitarSoundHandler != null)
+            {
+                guitarSoundHandler.IsNotePlaying = false;
+            }
         }
         
         public void PlayNoteTriggered(int note, int velocity)

@@ -40,9 +40,19 @@ namespace PrivateRyan.TarkovMIDI.Controllers
 
         private void InitializeSoundFont()
         {
+            TarkovMIDIPlugin.PBLogger.LogInfo("Init SoundFont.");
+            if (SoundFont != null)
+            {
+                TarkovMIDIPlugin.PBLogger.LogInfo("Dispose Old SoundFont.");
+                SoundFont.Dispose();
+            }
+            
+            TarkovMIDIPlugin.PBLogger.LogInfo("Creating New SoundFont");
             string soundFontPath = Path.Combine($"{Utils.GetPluginDirectory()}/SoundFonts", Settings.SelectedSoundFont.Value);
             SoundFont = new TinySoundFont(soundFontPath);
-
+            
+            TarkovMIDIPlugin.PBLogger.LogInfo("Created New SoundFont");
+            
             if (!SoundFont.IsLoaded)
             {
                 TarkovMIDIPlugin.PBLogger.LogError("Failed to load SoundFont.");
@@ -202,7 +212,7 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             TarkovMIDIPlugin.PBLogger.LogInfo("No note played recently, NotePlaying set to false.");
         }
 
-        public void ReconnectToMIDI(string selectedDeviceName)
+        public void ReconnectToMIDI()
         {
             DisposeMidiInputDevice();
 
@@ -217,6 +227,12 @@ namespace PrivateRyan.TarkovMIDI.Controllers
             {
                 TarkovMIDIPlugin.PBLogger.LogWarning("Reconnection failed, continuing without MIDI device.");
             }
+        }
+
+        public void ReloadSoundFont()
+        {
+            StopMidiSong();
+            InitializeSoundFont();
         }
 
         private void DisposeMidiInputDevice()

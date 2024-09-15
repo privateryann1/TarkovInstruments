@@ -11,7 +11,7 @@ namespace PrivateRyan.PlayableGuitar
         private int bufferSize = 44100 * 5 * 2;
         private MIDIController guitarMidi;
 
-        private bool isNotePlaying = false;
+        public bool IsNotePlaying = false;
         private int activeChannels = 2;
 
         private AudioSource audioSource;
@@ -53,7 +53,7 @@ namespace PrivateRyan.PlayableGuitar
                 Array.Resize(ref buffer, data.Length);
             }
             
-            if (isNotePlaying)
+            if (IsNotePlaying)
             {
                 guitarMidi.SoundFont.RenderAudio(buffer);
             }
@@ -69,14 +69,14 @@ namespace PrivateRyan.PlayableGuitar
 
         public void PlayNoteTriggered(int note, int velocity)
         {
-            isNotePlaying = true;
+            IsNotePlaying = true;
         }
 
         public void StopNoteTriggered(int note)
         {
             if (!guitarMidi.NotePlaying)
             {
-                isNotePlaying = false;
+                IsNotePlaying = false;
             }
         }
 
